@@ -7,34 +7,34 @@
 	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
+			"types": "./dist/index.d.ts",
 			"import": "./dist/index.mjs",
-			"require": "./dist/index.js",
-			"types": "./dist/index.d.ts"
+			"require": "./dist/index.js"
 		},
 		"./core": {
+			"types": "./dist/core/index.d.ts",
 			"import": "./dist/core/index.mjs",
-			"require": "./dist/core/index.js",
-			"types": "./dist/core/index.d.ts"
+			"require": "./dist/core/index.js"
 		},
 		"./transforms": {
+			"types": "./dist/transforms/index.d.ts",
 			"import": "./dist/transforms/index.mjs",
-			"require": "./dist/transforms/index.js",
-			"types": "./dist/transforms/index.d.ts"
+			"require": "./dist/transforms/index.js"
 		},
 		"./configs": {
+			"types": "./dist/configs/index.d.ts",
 			"import": "./dist/configs/index.mjs",
-			"require": "./dist/configs/index.js",
-			"types": "./dist/configs/index.d.ts"
+			"require": "./dist/configs/index.js"
 		},
 		"./plugins": {
+			"types": "./dist/plugins/index.d.ts",
 			"import": "./dist/plugins/index.mjs",
-			"require": "./dist/plugins/index.js",
-			"types": "./dist/plugins/index.d.ts"
+			"require": "./dist/plugins/index.js"
 		},
 		"./utils": {
+			"types": "./dist/utils/index.d.ts",
 			"import": "./dist/utils/index.mjs",
-			"require": "./dist/utils/index.js",
-			"types": "./dist/utils/index.d.ts"
+			"require": "./dist/utils/index.js"
 		}
 	},
 	"files": [
@@ -46,15 +46,22 @@
 		"build": "tsup",
 		"dev": "tsup --watch --dts --sourcemap",
 		"typecheck": "tsc --noEmit",
+		"test": "vitest",
+		"test:once": "vitest run",
+		"test:coverage": "vitest run --coverage",
 		"prepublishOnly": "npm run build"
 	},
 	"peerDependencies": {
 		"convex": ">=1.31.3"
 	},
 	"devDependencies": {
+		"@edge-runtime/vm": "^5.0.0",
+		"@vitest/coverage-v8": "4.0.17",
 		"convex": "^1.31.3",
+		"convex-test": "^0.0.41",
 		"tsup": "^8.5.1",
-		"typescript": "~5.6.3"
+		"typescript": "~5.6.3",
+		"vitest": "^4.0.17"
 	},
 	"keywords": [
 		"convex",
