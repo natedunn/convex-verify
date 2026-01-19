@@ -25,6 +25,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          registry-url: "https://registry.npmjs.org"
 
       - run: pnpm install --frozen-lockfile
 
@@ -35,5 +36,22 @@ jobs:
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
         run: pnpm semantic-release
+
+      - name: Publish to npm
+        run: |
+          # Fetch the latest changes (semantic-release may have pushed a new version)
+          git fetch origin main
+          git checkout origin/main
+
+          # Get the version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+
+          # Check if this version is already published
+          if npm view convex-verify@$VERSION version 2>/dev/null; then
+            echo "Version $VERSION already published, skipping"
+          else
+            echo "Publishing version $VERSION"
+            pnpm build
+            npm publish --provenance --access public
+          fi
