@@ -44,15 +44,18 @@ export const { insert, patch, dangerouslyPatch } = verifyConfig(schema, {
 		posts: ["authorId"],
 	}),
 
-	// Validation plugins
-	plugins: [
-		uniqueRowConfig(schema, {
-			posts: ["by_author_slug"],
-		}),
-		uniqueColumnConfig(schema, {
-			users: ["by_email", "by_username"],
-		}),
-	],
+	// Enforce unique row combinations
+	uniqueRow: uniqueRowConfig(schema, {
+		posts: ["by_author_slug"],
+	}),
+
+	// Enforce unique column values
+	uniqueColumn: uniqueColumnConfig(schema, {
+		users: ["by_email", "by_username"],
+	}),
+
+	// Custom/third-party plugins (optional)
+	plugins: [],
 });
 ```
 
@@ -94,8 +97,15 @@ Main configuration function that returns typed `insert`, `patch`, and `dangerous
 
 ```ts
 const { insert, patch, dangerouslyPatch, configs } = verifyConfig(schema, {
+  // Type-affecting configs
   defaultValues?: DefaultValuesConfig,
   protectedColumns?: ProtectedColumnsConfig,
+
+  // Built-in validation configs
+  uniqueRow?: UniqueRowConfig,
+  uniqueColumn?: UniqueColumnConfig,
+
+  // Custom/third-party plugins
   plugins?: ValidatePlugin[],
 });
 ```
@@ -205,9 +215,9 @@ await dangerouslyPatch(ctx, "posts", id, {
 
 ---
 
-## Plugins
+## Validation
 
-Plugins validate data during `insert()` and `patch()` operations. They run after transforms and can throw errors to prevent the operation.
+Validation configs check data during `insert()` and `patch()` operations. They run after transforms and can throw errors to prevent the operation.
 
 ### `uniqueRowConfig(schema, config)`
 
@@ -217,6 +227,26 @@ Enforces uniqueness across multiple columns using composite indexes.
 import { uniqueRowConfig } from "convex-verify";
 // or
 import { uniqueRowConfig } from "convex-verify/plugins";
+```
+
+#### Usage
+
+```ts
+// As a named config key (recommended)
+verifyConfig(schema, {
+	uniqueRow: uniqueRowConfig(schema, {
+		posts: ["by_author_slug"],
+	}),
+});
+
+// Or in the plugins array
+verifyConfig(schema, {
+	plugins: [
+		uniqueRowConfig(schema, {
+			posts: ["by_author_slug"],
+		}),
+	],
+});
 ```
 
 #### Shorthand (Index Names)
@@ -251,12 +281,32 @@ import { uniqueColumnConfig } from "convex-verify";
 import { uniqueColumnConfig } from "convex-verify/plugins";
 ```
 
+#### Usage
+
+```ts
+// As a named config key (recommended)
+verifyConfig(schema, {
+	uniqueColumn: uniqueColumnConfig(schema, {
+		users: ["by_email", "by_username"],
+	}),
+});
+
+// Or in the plugins array
+verifyConfig(schema, {
+	plugins: [
+		uniqueColumnConfig(schema, {
+			users: ["by_email", "by_username"],
+		}),
+	],
+});
+```
+
 The column name is derived from the index name by removing `by_` prefix:
 
 - `by_username` → checks `username` column
 - `by_email` → checks `email` column
 
-#### Example
+#### Shorthand (Index Names)
 
 ```ts
 const uniqueColumns = uniqueColumnConfig(schema, {
@@ -275,6 +325,10 @@ const uniqueColumns = uniqueColumnConfig(schema, {
 	],
 });
 ```
+
+## Custom Plugins
+
+The `plugins` array accepts custom validation plugins for extensibility.
 
 ### `createValidatePlugin(name, config, handlers)`
 

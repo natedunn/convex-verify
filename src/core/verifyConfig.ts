@@ -24,8 +24,27 @@ import {
  */
 type VerifyConfigInputWithPlugins = VerifyConfigInput & {
 	/**
-	 * Validate plugins to run after transforms.
+	 * Unique row validation config.
+	 * Enforces uniqueness across multiple columns using composite indexes.
+	 *
+	 * Can also be added to the `plugins` array.
+	 */
+	uniqueRow?: ValidatePlugin<"uniqueRow", any>;
+
+	/**
+	 * Unique column validation config.
+	 * Enforces uniqueness on single columns using indexes.
+	 *
+	 * Can also be added to the `plugins` array.
+	 */
+	uniqueColumn?: ValidatePlugin<"uniqueColumn", any>;
+
+	/**
+	 * Additional validate plugins to run after transforms.
 	 * These plugins can validate data but don't affect input types.
+	 *
+	 * Built-in plugins (uniqueRow, uniqueColumn) can be added here
+	 * as an alternative to using their dedicated config keys.
 	 */
 	plugins?: ValidatePlugin[];
 };
@@ -39,21 +58,34 @@ type VerifyConfigInputWithPlugins = VerifyConfigInput & {
  *
  * @example
  * ```ts
- * import { verifyConfig, defaultValuesConfig, protectedColumnsConfig, uniqueRowConfig } from 'convex-verify';
+ * import {
+ *   verifyConfig,
+ *   defaultValuesConfig,
+ *   protectedColumnsConfig,
+ *   uniqueRowConfig,
+ *   uniqueColumnConfig,
+ * } from 'convex-verify';
  * import schema from './schema';
  *
  * export const { insert, patch, dangerouslyPatch } = verifyConfig(schema, {
+ *   // Type-affecting configs
  *   defaultValues: defaultValuesConfig(schema, () => ({
  *     posts: { status: 'draft', views: 0 },
  *   })),
  *   protectedColumns: protectedColumnsConfig(schema, {
  *     posts: ['authorId'],
  *   }),
- *   plugins: [
- *     uniqueRowConfig(schema, {
- *       posts: ['by_slug'],
- *     }),
- *   ],
+ *
+ *   // Built-in validation configs
+ *   uniqueRow: uniqueRowConfig(schema, {
+ *     posts: ['by_author_slug'],
+ *   }),
+ *   uniqueColumn: uniqueColumnConfig(schema, {
+ *     users: ['by_email', 'by_username'],
+ *   }),
+ *
+ *   // Custom/third-party plugins
+ *   plugins: [myCustomPlugin()],
  * });
  * ```
  */
@@ -65,8 +97,14 @@ export const verifyConfig = <
 	_schema: SchemaDefinition<S, boolean>,
 	configs: VC,
 ) => {
-	// Get all validate plugins
-	const validatePlugins = configs.plugins ?? [];
+	// Get all validate plugins - merge built-in configs with plugins array
+	const validatePlugins: ValidatePlugin[] = [
+		// Built-in validation configs (if provided as named keys)
+		...(configs.uniqueRow ? [configs.uniqueRow] : []),
+		...(configs.uniqueColumn ? [configs.uniqueColumn] : []),
+		// Additional plugins from the plugins array
+		...(configs.plugins ?? []),
+	];
 
 	/**
 	 * Insert a document with all configured verifications applied.
