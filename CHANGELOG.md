@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/natedunn/convex-verify/compare/v1.0.1...v1.0.2) (2026-01-19)
+
+
+### Bug Fixes
+
+* **ci:** use native npm publish with OIDC instead of semantic-release ([8037d48](https://github.com/natedunn/convex-verify/commit/8037d4897beb48540b5ec634a7403d5a495f9f6f))
+
 ## [1.0.1](https://github.com/natedunn/convex-verify/compare/v1.0.0...v1.0.1) (2026-01-19)
 
 
