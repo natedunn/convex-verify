@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/natedunn/convex-verify/compare/v1.0.2...v1.0.3) (2026-01-19)
+
+
+### Bug Fixes
+
+* **ci:** simplify npm publish step for OIDC ([34c42d5](https://github.com/natedunn/convex-verify/commit/34c42d5db1432cf4a4f03420ee038870414840e8))
+
 ## [1.0.2](https://github.com/natedunn/convex-verify/compare/v1.0.1...v1.0.2) (2026-01-19)
 
 

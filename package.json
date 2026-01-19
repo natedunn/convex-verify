@@ -1,6 +1,6 @@
 {
 	"name": "convex-verify",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "Type-safe verification and validation for Convex database operations",
 	"packageManager": "pnpm@9.10.0",
 	"main": "./dist/index.js",
