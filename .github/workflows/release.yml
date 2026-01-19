@@ -25,6 +25,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          registry-url: "https://registry.npmjs.org"
 
       - run: pnpm install --frozen-lockfile
 
@@ -36,6 +37,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm semantic-release
+
+      - name: Setup npm trusted publishing
+        uses: azu/setup-npm-trusted-publish@v1
 
       - name: Publish to npm
         run: |
