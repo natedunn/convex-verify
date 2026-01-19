@@ -1,6 +1,6 @@
 {
 	"name": "convex-verify",
-	"version": "0.1.1",
+	"version": "1.0.0",
 	"description": "Type-safe verification and validation for Convex database operations",
 	"packageManager": "pnpm@9.10.0",
 	"main": "./dist/index.js",
@@ -85,17 +85,27 @@
 	},
 	"homepage": "https://github.com/natedunn/convex-verify#readme",
 	"release": {
-		"branches": ["main"],
+		"branches": [
+			"main"
+		],
 		"plugins": [
 			"@semantic-release/commit-analyzer",
 			"@semantic-release/release-notes-generator",
 			"@semantic-release/changelog",
-			["@semantic-release/npm", { "provenance": true }],
+			[
+				"@semantic-release/npm",
+				{
+					"provenance": true
+				}
+			],
 			"@semantic-release/github",
 			[
 				"@semantic-release/git",
 				{
-					"assets": ["package.json", "CHANGELOG.md"],
+					"assets": [
+						"package.json",
+						"CHANGELOG.md"
+					],
 					"message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
 				}
 			]
