@@ -4,14 +4,14 @@ import {
 	GenericSchema,
 	SchemaDefinition,
 	TableNamesInDataModel,
-} from 'convex/server';
+} from "convex/server";
 
 import {
 	IndexConfigBaseOptions,
 	NormalizedIndexConfig,
 	normalizeIndexConfigEntry,
 	UniqueRowConfigData,
-} from '../core/types';
+} from "../core/types";
 
 /**
  * Get Table indexes helper
@@ -25,9 +25,9 @@ export const getTableIndexes = <
 	TN extends TableNamesInDataModel<DataModel>,
 >(
 	schema: S,
-	tableName: TN
+	tableName: TN,
 ) => {
-	return schema.tables[tableName][' indexes']();
+	return schema.tables[tableName][" indexes"]();
 };
 
 /**
@@ -47,7 +47,7 @@ export const constructColumnData = <
 	}: {
 		allowNullishValue?: boolean;
 		allOrNothing?: boolean;
-	}
+	},
 ) => {
 	const lengthOfFields = fields.length;
 
@@ -68,13 +68,6 @@ export const constructColumnData = <
 		.filter((e) => !!e);
 
 	if (allOrNothing && columnData.length !== lengthOfFields) {
-		console.warn(
-			'The index was NOT supplied with the same amount data as there was fields. This warning only appears when setting `allOrNothing` to `true`.',
-			'`fields: `',
-			fields,
-			'`columnData: `',
-			columnData
-		);
 		return null;
 	}
 
@@ -95,8 +88,10 @@ export const constructIndexData = <
 >(
 	schema: S,
 	tableName: TN,
-	indexConfig?: UniqueRowConfigData<DataModel>
-): (NormalizedIndexConfig<Options> & { name: string; fields: string[] })[] | undefined => {
+	indexConfig?: UniqueRowConfigData<DataModel>,
+):
+	| (NormalizedIndexConfig<Options> & { name: string; fields: string[] })[]
+	| undefined => {
 	if (!indexConfig) {
 		return;
 	}
@@ -112,17 +107,19 @@ export const constructIndexData = <
 		const { index, identifiers, ...rest } = normalized;
 
 		const fields = getTableIndexes(schema, tableName).find(
-			(i) => i.indexDescriptor == index
+			(i) => i.indexDescriptor == index,
 		)?.fields;
 
 		if (!fields) {
-			throw new Error(`Error in 'constructIndexData()'. No fields found for index: [${index}]`);
+			throw new Error(
+				`Error in 'constructIndexData()'. No fields found for index: [${index}]`,
+			);
 		}
 
 		// Create a unique map in case there is any overlap in identifiers
 		// Always include '_id' as a fallback identifier
 		const identifierMap = new Map<string, string>(
-			[...identifiers, '_id'].map((i) => [String(i), String(i)])
+			[...identifiers, "_id"].map((i) => [String(i), String(i)]),
 		);
 
 		return {
