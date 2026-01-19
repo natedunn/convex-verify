@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/natedunn/convex-verify/compare/v1.0.0...v1.0.1) (2026-01-19)
+
+
+### Bug Fixes
+
+* **ci:** remove registry-url to fix OIDC authentication ([41fbdd1](https://github.com/natedunn/convex-verify/commit/41fbdd1f664b898f4d5c27bcb0d52d8f8ffcb0a2))
+
 # 1.0.0 (2026-01-19)
 
 
