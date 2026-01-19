@@ -1,3 +1,11 @@
+## [1.0.4](https://github.com/natedunn/convex-verify/compare/v1.0.3...v1.0.4) (2026-01-19)
+
+
+### Bug Fixes
+
+* **ci:** fix repository URL and add trusted publish setup action ([c9ae516](https://github.com/natedunn/convex-verify/commit/c9ae5162b5d81fbef39d84a50c2bbb78796293b4))
+* **ci:** simplify release workflow to official semantic-release pattern ([66b42d1](https://github.com/natedunn/convex-verify/commit/66b42d1b3860c0a4471ec2c82558fc286ce38534))
+
 ## [1.0.3](https://github.com/natedunn/convex-verify/compare/v1.0.2...v1.0.3) (2026-01-19)
 
 
