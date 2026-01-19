@@ -25,7 +25,6 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          registry-url: "https://registry.npmjs.org"
 
       - run: pnpm install --frozen-lockfile
 
@@ -52,6 +51,5 @@ jobs:
             echo "Version $VERSION already published, skipping"
           else
             echo "Publishing version $VERSION"
-            pnpm build
             npm publish --provenance --access public
           fi
