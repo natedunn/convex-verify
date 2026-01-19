@@ -5,9 +5,9 @@ import {
 	SchemaDefinition,
 	TableNamesInDataModel,
 	WithoutSystemFields,
-} from 'convex/server';
+} from "convex/server";
 
-import { DefaultValuesConfigData, MakeOptional } from '../core/types';
+import { DefaultValuesConfigData, MakeOptional } from "../core/types";
 
 /**
  * Creates a default values transform.
@@ -43,7 +43,7 @@ export const defaultValuesConfig = <
 	const C extends DefaultValuesConfigData<DataModel>,
 >(
 	_schema: S,
-	config: C | (() => C | Promise<C>)
+	config: C | (() => C | Promise<C>),
 ) => {
 	/**
 	 * Apply default values to the data for a given table.
@@ -51,19 +51,25 @@ export const defaultValuesConfig = <
 	 */
 	const verify = async <TN extends TableNamesInDataModel<DataModel>>(
 		tableName: TN,
-		data: MakeOptional<WithoutSystemFields<DocumentByName<DataModel, TN>>, keyof C[TN]>
+		data: MakeOptional<
+			WithoutSystemFields<DocumentByName<DataModel, TN>>,
+			keyof C[TN]
+		>,
 	): Promise<WithoutSystemFields<DocumentByName<DataModel, TN>>> => {
 		// Resolve config - handle both direct object and function forms
-		const resolvedConfig = typeof config === 'function' ? await config() : config;
+		const resolvedConfig =
+			typeof config === "function" ? await config() : config;
 
 		return {
-			...(resolvedConfig[tableName] as Partial<WithoutSystemFields<DocumentByName<DataModel, TN>>>),
+			...(resolvedConfig[tableName] as Partial<
+				WithoutSystemFields<DocumentByName<DataModel, TN>>
+			>),
 			...(data as WithoutSystemFields<DocumentByName<DataModel, TN>>),
 		};
 	};
 
 	return {
-		_type: 'defaultValues' as const,
+		_type: "defaultValues" as const,
 		verify,
 		config,
 	};

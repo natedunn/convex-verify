@@ -44,12 +44,12 @@
 	],
 	"scripts": {
 		"build": "tsup",
-		"dev": "tsup --watch",
+		"dev": "tsup --watch --dts --sourcemap",
 		"typecheck": "tsc --noEmit",
 		"prepublishOnly": "npm run build"
 	},
 	"peerDependencies": {
-		"convex": ">=1.17.4"
+		"convex": ">=1.31.3"
 	},
 	"devDependencies": {
 		"convex": "^1.31.3",

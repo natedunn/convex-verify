@@ -6,10 +6,10 @@ import {
 	SchemaDefinition,
 	TableNamesInDataModel,
 	WithoutSystemFields,
-} from 'convex/server';
-import { GenericId } from 'convex/values';
+} from "convex/server";
+import { GenericId } from "convex/values";
 
-import { runValidatePlugins, ValidatePlugin } from './plugin';
+import { runValidatePlugins, ValidatePlugin } from "./plugin";
 import {
 	HasKey,
 	MakeOptional,
@@ -17,7 +17,7 @@ import {
 	OptionalKeysForTable,
 	ProtectedKeysForTable,
 	VerifyConfigInput,
-} from './types';
+} from "./types";
 
 /**
  * Extended config input that includes optional validate plugins
@@ -58,12 +58,12 @@ type VerifyConfigInputWithPlugins = VerifyConfigInput & {
  * ```
  */
 export const verifyConfig = <
-	S extends SchemaDefinition<GenericSchema, boolean>,
-	DataModel extends DataModelFromSchemaDefinition<S>,
+	S extends GenericSchema,
+	DataModel extends DataModelFromSchemaDefinition<SchemaDefinition<S, boolean>>,
 	const VC extends VerifyConfigInputWithPlugins,
 >(
-	_schema: S,
-	configs: VC
+	_schema: SchemaDefinition<S, boolean>,
+	configs: VC,
 ) => {
 	// Get all validate plugins
 	const validatePlugins = configs.plugins ?? [];
@@ -82,7 +82,7 @@ export const verifyConfig = <
 	>(
 		ctx: Omit<GenericMutationCtx<DataModel>, never>,
 		tableName: TN,
-		data: HasKey<VC, 'defaultValues'> extends true
+		data: HasKey<VC, "defaultValues"> extends true
 			? MakeOptional<
 					WithoutSystemFields<D>,
 					OptionalKeysForTable<VC, TN> & keyof WithoutSystemFields<D>
@@ -90,15 +90,20 @@ export const verifyConfig = <
 			: WithoutSystemFields<D>,
 		options?: {
 			onFail?: OnFailCallback<D>;
-		}
+		},
 	): Promise<GenericId<TN>> => {
-		let verifiedData = data as WithoutSystemFields<DocumentByName<DataModel, TN>>;
+		let verifiedData = data as WithoutSystemFields<
+			DocumentByName<DataModel, TN>
+		>;
 
 		// === TRANSFORM PHASE ===
 
 		// Apply default values (transforms data)
 		if (configs.defaultValues) {
-			verifiedData = await configs.defaultValues.verify(tableName, verifiedData);
+			verifiedData = await configs.defaultValues.verify(
+				tableName,
+				verifiedData,
+			);
 		}
 
 		// === VALIDATE PHASE ===
@@ -110,11 +115,11 @@ export const verifyConfig = <
 				{
 					ctx,
 					tableName: tableName as string,
-					operation: 'insert',
+					operation: "insert",
 					onFail: options?.onFail,
 					schema: _schema,
 				},
-				verifiedData
+				verifiedData,
 			);
 		}
 
@@ -141,7 +146,7 @@ export const verifyConfig = <
 		ctx: Omit<GenericMutationCtx<DataModel>, never>,
 		tableName: TN,
 		id: GenericId<TN>,
-		data: HasKey<VC, 'protectedColumns'> extends true
+		data: HasKey<VC, "protectedColumns"> extends true
 			? Omit<
 					Partial<WithoutSystemFields<D>>,
 					ProtectedKeysForTable<VC, TN> & keyof WithoutSystemFields<D>
@@ -149,9 +154,11 @@ export const verifyConfig = <
 			: Partial<WithoutSystemFields<D>>,
 		options?: {
 			onFail?: OnFailCallback<D>;
-		}
+		},
 	): Promise<void> => {
-		let verifiedData = data as Partial<WithoutSystemFields<DocumentByName<DataModel, TN>>>;
+		let verifiedData = data as Partial<
+			WithoutSystemFields<DocumentByName<DataModel, TN>>
+		>;
 
 		// === VALIDATE PHASE ===
 
@@ -162,12 +169,12 @@ export const verifyConfig = <
 				{
 					ctx,
 					tableName: tableName as string,
-					operation: 'patch',
+					operation: "patch",
 					patchId: id,
 					onFail: options?.onFail,
 					schema: _schema,
 				},
-				verifiedData
+				verifiedData,
 			);
 		}
 
@@ -192,7 +199,7 @@ export const verifyConfig = <
 		data: Partial<WithoutSystemFields<D>>,
 		options?: {
 			onFail?: OnFailCallback<D>;
-		}
+		},
 	): Promise<void> => {
 		let verifiedData = data;
 
@@ -205,12 +212,12 @@ export const verifyConfig = <
 				{
 					ctx,
 					tableName: tableName as string,
-					operation: 'patch',
+					operation: "patch",
 					patchId: id,
 					onFail: options?.onFail,
 					schema: _schema,
 				},
-				verifiedData
+				verifiedData,
 			);
 		}
 

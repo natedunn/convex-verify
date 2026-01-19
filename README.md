@@ -13,12 +13,12 @@ Type-safe verification and validation for Convex database operations.
 ## Installation
 
 ```bash
-npm install convex-verify
+pnpm install convex-verify
 ```
 
 **Peer Dependencies:**
 
-- `convex` >= 1.17.4
+- `convex` >= 1.31.3
 
 ## Quick Start
 
@@ -29,28 +29,28 @@ import {
 	uniqueColumnConfig,
 	uniqueRowConfig,
 	verifyConfig,
-} from 'convex-verify';
+} from "convex-verify";
 
-import schema from './schema';
+import schema from "./schema";
 
 export const { insert, patch, dangerouslyPatch } = verifyConfig(schema, {
 	// Make fields optional with defaults
 	defaultValues: defaultValuesConfig(schema, () => ({
-		posts: { status: 'draft', views: 0 },
+		posts: { status: "draft", views: 0 },
 	})),
 
 	// Prevent patching critical fields
 	protectedColumns: protectedColumnsConfig(schema, {
-		posts: ['authorId'],
+		posts: ["authorId"],
 	}),
 
 	// Validation plugins
 	plugins: [
 		uniqueRowConfig(schema, {
-			posts: ['by_author_slug'],
+			posts: ["by_author_slug"],
 		}),
 		uniqueColumnConfig(schema, {
-			users: ['by_email', 'by_username'],
+			users: ["by_email", "by_username"],
 		}),
 	],
 });
@@ -59,13 +59,13 @@ export const { insert, patch, dangerouslyPatch } = verifyConfig(schema, {
 Then use in your mutations:
 
 ```ts
-import { insert, patch } from './verify';
+import { insert, patch } from "./verify";
 
 export const createPost = mutation({
 	args: { title: v.string(), content: v.string() },
 	handler: async (ctx, args) => {
 		// status and views are optional - defaults are applied
-		return await insert(ctx, 'posts', {
+		return await insert(ctx, "posts", {
 			title: args.title,
 			content: args.content,
 			authorId: ctx.auth.userId,
@@ -74,10 +74,10 @@ export const createPost = mutation({
 });
 
 export const updatePost = mutation({
-	args: { id: v.id('posts'), title: v.string() },
+	args: { id: v.id("posts"), title: v.string() },
 	handler: async (ctx, args) => {
 		// authorId is protected - TypeScript won't allow it here
-		await patch(ctx, 'posts', args.id, {
+		await patch(ctx, "posts", args.id, {
 			title: args.title,
 		});
 	},
@@ -120,16 +120,16 @@ Transforms modify the input type of `insert()`.
 Makes specified fields optional in `insert()` by providing default values.
 
 ```ts
-import { defaultValuesConfig } from 'convex-verify';
+import { defaultValuesConfig } from "convex-verify";
 // or
-import { defaultValuesConfig } from 'convex-verify/transforms';
+import { defaultValuesConfig } from "convex-verify/transforms";
 ```
 
 #### Static Config
 
 ```ts
 const defaults = defaultValuesConfig(schema, {
-	posts: { status: 'draft', views: 0 },
+	posts: { status: "draft", views: 0 },
 	comments: { likes: 0 },
 });
 ```
@@ -141,7 +141,7 @@ Use a function for values that should be generated fresh on each insert:
 ```ts
 const defaults = defaultValuesConfig(schema, () => ({
 	posts: {
-		status: 'draft',
+		status: "draft",
 		slug: generateRandomSlug(),
 		createdAt: Date.now(),
 	},
@@ -169,17 +169,17 @@ Configs modify the input type of `patch()`.
 Removes specified columns from the `patch()` input type, preventing accidental updates.
 
 ```ts
-import { protectedColumnsConfig } from 'convex-verify';
+import { protectedColumnsConfig } from "convex-verify";
 // or
-import { protectedColumnsConfig } from 'convex-verify/configs';
+import { protectedColumnsConfig } from "convex-verify/configs";
 ```
 
 #### Example
 
 ```ts
 const protected = protectedColumnsConfig(schema, {
-	posts: ['authorId', 'createdAt'],
-	comments: ['postId', 'authorId'],
+	posts: ["authorId", "createdAt"],
+	comments: ["postId", "authorId"],
 });
 ```
 
@@ -189,15 +189,15 @@ Use `dangerouslyPatch()` when you need to update protected columns:
 
 ```ts
 // Regular patch - authorId not allowed
-await patch(ctx, 'posts', id, {
+await patch(ctx, "posts", id, {
 	authorId: newAuthorId, // ❌ TypeScript error
-	title: 'New Title', // ✅ OK
+	title: "New Title", // ✅ OK
 });
 
 // Dangerous patch - full access
-await dangerouslyPatch(ctx, 'posts', id, {
+await dangerouslyPatch(ctx, "posts", id, {
 	authorId: newAuthorId, // ✅ OK (bypasses protection)
-	title: 'New Title',
+	title: "New Title",
 });
 ```
 
@@ -214,17 +214,17 @@ Plugins validate data during `insert()` and `patch()` operations. They run after
 Enforces uniqueness across multiple columns using composite indexes.
 
 ```ts
-import { uniqueRowConfig } from 'convex-verify';
+import { uniqueRowConfig } from "convex-verify";
 // or
-import { uniqueRowConfig } from 'convex-verify/plugins';
+import { uniqueRowConfig } from "convex-verify/plugins";
 ```
 
 #### Shorthand (Index Names)
 
 ```ts
 const uniqueRows = uniqueRowConfig(schema, {
-	posts: ['by_author_slug'], // Unique author + slug combo
-	projects: ['by_org_slug'], // Unique org + slug combo
+	posts: ["by_author_slug"], // Unique author + slug combo
+	projects: ["by_org_slug"], // Unique org + slug combo
 });
 ```
 
@@ -234,8 +234,8 @@ const uniqueRows = uniqueRowConfig(schema, {
 const uniqueRows = uniqueRowConfig(schema, {
 	posts: [
 		{
-			index: 'by_author_slug',
-			identifiers: ['_id', 'authorId'], // Fields to check for "same document"
+			index: "by_author_slug",
+			identifiers: ["_id", "authorId"], // Fields to check for "same document"
 		},
 	],
 });
@@ -246,9 +246,9 @@ const uniqueRows = uniqueRowConfig(schema, {
 Enforces uniqueness on single columns using indexes.
 
 ```ts
-import { uniqueColumnConfig } from 'convex-verify';
+import { uniqueColumnConfig } from "convex-verify";
 // or
-import { uniqueColumnConfig } from 'convex-verify/plugins';
+import { uniqueColumnConfig } from "convex-verify/plugins";
 ```
 
 The column name is derived from the index name by removing `by_` prefix:
@@ -260,8 +260,8 @@ The column name is derived from the index name by removing `by_` prefix:
 
 ```ts
 const uniqueColumns = uniqueColumnConfig(schema, {
-	users: ['by_username', 'by_email'],
-	organizations: ['by_slug'],
+	users: ["by_username", "by_email"],
+	organizations: ["by_slug"],
 });
 ```
 
@@ -270,8 +270,8 @@ const uniqueColumns = uniqueColumnConfig(schema, {
 ```ts
 const uniqueColumns = uniqueColumnConfig(schema, {
 	users: [
-		'by_username', // shorthand
-		{ index: 'by_email', identifiers: ['_id', 'clerkId'] }, // with options
+		"by_username", // shorthand
+		{ index: "by_email", identifiers: ["_id", "clerkId"] }, // with options
 	],
 });
 ```
@@ -281,27 +281,29 @@ const uniqueColumns = uniqueColumnConfig(schema, {
 Create custom validation plugins.
 
 ```ts
-import { createValidatePlugin } from 'convex-verify';
+import { createValidatePlugin } from "convex-verify";
 // or
-import { createValidatePlugin } from 'convex-verify/core';
+import { createValidatePlugin } from "convex-verify/core";
 ```
 
 #### Example: Required Fields Plugin
 
 ```ts
 const requiredFields = createValidatePlugin(
-	'requiredFields',
-	{ fields: ['title', 'content'] },
+	"requiredFields",
+	{ fields: ["title", "content"] },
 	{
 		insert: (context, data) => {
 			for (const field of context.config.fields) {
 				if (!data[field]) {
-					throw new ConvexError({ message: `Missing required field: ${field}` });
+					throw new ConvexError({
+						message: `Missing required field: ${field}`,
+					});
 				}
 			}
 			return data;
 		},
-	}
+	},
 );
 ```
 
@@ -309,7 +311,7 @@ const requiredFields = createValidatePlugin(
 
 ```ts
 const checkOwnership = createValidatePlugin(
-	'checkOwnership',
+	"checkOwnership",
 	{},
 	{
 		patch: async (context, data) => {
@@ -317,11 +319,13 @@ const checkOwnership = createValidatePlugin(
 			const user = await getCurrentUser(context.ctx);
 
 			if (existing?.authorId !== user._id) {
-				throw new ConvexError({ message: 'Not authorized to edit this document' });
+				throw new ConvexError({
+					message: "Not authorized to edit this document",
+				});
 			}
 			return data;
 		},
-	}
+	},
 );
 ```
 
@@ -333,7 +337,7 @@ Plugins receive a `ValidateContext` object:
 type ValidateContext = {
 	ctx: GenericMutationCtx; // Convex mutation context
 	tableName: string; // Table being operated on
-	operation: 'insert' | 'patch';
+	operation: "insert" | "patch";
 	patchId?: GenericId; // Document ID (patch only)
 	onFail?: OnFailCallback; // Callback for failure details
 	schema?: SchemaDefinition; // Schema reference
@@ -348,13 +352,13 @@ For smaller bundle sizes, you can import from specific subpaths:
 
 ```ts
 // Import everything from root
-import { uniqueRowConfig, verifyConfig } from 'convex-verify';
-import { protectedColumnsConfig } from 'convex-verify/configs';
+import { uniqueRowConfig, verifyConfig } from "convex-verify";
+import { protectedColumnsConfig } from "convex-verify/configs";
 // Or import from specific subpaths
-import { createValidatePlugin, verifyConfig } from 'convex-verify/core';
-import { uniqueColumnConfig, uniqueRowConfig } from 'convex-verify/plugins';
-import { defaultValuesConfig } from 'convex-verify/transforms';
-import { getTableIndexes } from 'convex-verify/utils';
+import { createValidatePlugin, verifyConfig } from "convex-verify/core";
+import { uniqueColumnConfig, uniqueRowConfig } from "convex-verify/plugins";
+import { defaultValuesConfig } from "convex-verify/transforms";
+import { getTableIndexes } from "convex-verify/utils";
 ```
 
 ---
@@ -366,13 +370,13 @@ import { getTableIndexes } from 'convex-verify/utils';
 All operations accept an optional `onFail` callback for handling validation failures:
 
 ```ts
-await insert(ctx, 'posts', data, {
+await insert(ctx, "posts", data, {
 	onFail: (args) => {
 		if (args.uniqueRow) {
-			console.log('Duplicate row:', args.uniqueRow.existingData);
+			console.log("Duplicate row:", args.uniqueRow.existingData);
 		}
 		if (args.uniqueColumn) {
-			console.log('Duplicate column:', args.uniqueColumn.conflictingColumn);
+			console.log("Duplicate column:", args.uniqueColumn.conflictingColumn);
 		}
 	},
 });
