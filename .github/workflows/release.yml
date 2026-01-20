@@ -1,42 +1,50 @@
+# .github/workflows/release.yml
 name: Release
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main          # or master; adjust to your default branch
 
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
-  id-token: write
+  contents: write     # create GitHub releases / tags
+  issues: write       # comment on released issues
+  pull-requests: write # comment on released PRs
+  id-token: write   # enable OIDC trusted publishing to npm
 
 jobs:
   release:
+    name: Release
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # semantic-release needs full history
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
         with:
-          node-version: 24
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
           cache: pnpm
           registry-url: 'https://registry.npmjs.org'
 
-      - run: npm ci
-        env:
-            NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - run: pnpm install --frozen-lockfile
+      - name: Run tests
+        run: pnpm test:once
 
-      - run: pnpm build
-
-      - run: pnpm test:once
+      - name: Build package
+        run: pnpm build
 
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm semantic-release
+        run: pnpm exec semantic-release
