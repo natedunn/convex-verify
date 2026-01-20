@@ -1,3 +1,11 @@
+## [1.0.5](https://github.com/natedunn/convex-verify/compare/v1.0.4...v1.0.5) (2026-01-20)
+
+
+### Bug Fixes
+
+* **ci:** changes for pnpm ([1363f60](https://github.com/natedunn/convex-verify/commit/1363f600902347169f8461e767bfea7c4b4a45ef))
+* **ci:** lets handcraft these fixes ([760978b](https://github.com/natedunn/convex-verify/commit/760978b56b94d823e2f77dfba34bc4ebcbb2b6ca))
+
 ## [1.0.4](https://github.com/natedunn/convex-verify/compare/v1.0.3...v1.0.4) (2026-01-19)
 
 
