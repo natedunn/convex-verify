@@ -34,30 +34,42 @@ export type ValidateContext<TN extends string = string> = {
 };
 
 /**
- * A validate plugin that can check data during insert/patch operations.
+ * A plugin that can validate and/or transform data during insert/patch operations.
  *
- * Validate plugins:
- * - Run AFTER transform plugins (like defaultValues)
+ * Plugins:
+ * - Run AFTER transform configs (like defaultValues)
  * - Can be async (use await for API calls, db queries, etc.)
  * - Can throw errors to prevent the operation
- * - Should return the data unchanged (validation only, no transformation)
+ * - Can return modified data to transform it (e.g. sanitize, normalize, enrich)
  * - Do NOT affect the TypeScript types of the input data
  *
  * @example
  * ```ts
- * // Simple sync plugin
+ * // Validation-only plugin (config captured via closure)
  * const requiredFields = createValidatePlugin(
  *   'requiredFields',
- *   { fields: ['title', 'content'] },
+ *   {},
  *   {
- *     insert: (context, data) => {
- *       for (const field of config.fields) {
+ *     insert: (_context, data) => {
+ *       for (const field of ['title', 'content']) {
  *         if (!data[field]) {
  *           throw new ConvexError({ message: `Missing required field: ${field}` });
  *         }
  *       }
  *       return data;
  *     },
+ *   }
+ * );
+ *
+ * // Transform plugin – normalizes a field before insert
+ * const normalizeEmail = createMutatePlugin(
+ *   'normalizeEmail',
+ *   {},
+ *   {
+ *     insert: (_context, data) => ({
+ *       ...data,
+ *       email: data.email?.toLowerCase().trim(),
+ *     }),
  *   }
  * );
  *
@@ -87,28 +99,52 @@ export interface ValidatePlugin<Type extends string = string, Config = unknown> 
 	/** Verify functions for insert and/or patch operations */
 	verify: {
 		/**
-		 * Validate data for insert operations.
+		 * Run for insert operations. Can validate data, transform it, or both.
 		 * Can be sync or async.
 		 *
 		 * @param context - Plugin context with ctx, tableName, schema, etc.
-		 * @param data - The data to validate (after transforms applied)
-		 * @returns The data unchanged (or Promise resolving to data)
-		 * @throws ConvexError if validation fails
+		 * @param data - The data being inserted (after any transform configs applied)
+		 * @returns The data, optionally modified (or a Promise resolving to it)
+		 * @throws ConvexError to abort the operation
 		 */
 		insert?: (context: ValidateContext, data: any) => Promise<any> | any;
 
 		/**
-		 * Validate data for patch operations.
+		 * Run for patch operations. Can validate data, transform it, or both.
 		 * Can be sync or async.
 		 *
 		 * @param context - Plugin context with ctx, tableName, patchId, schema, etc.
-		 * @param data - The partial data to validate
-		 * @returns The data unchanged (or Promise resolving to data)
-		 * @throws ConvexError if validation fails
+		 * @param data - The partial data being patched
+		 * @returns The data, optionally modified (or a Promise resolving to it)
+		 * @throws ConvexError to abort the operation
 		 */
 		patch?: (context: ValidateContext, data: any) => Promise<any> | any;
 	};
 }
+
+/**
+ * Alias for {@link ValidatePlugin} for plugins that primarily transform data
+ * rather than validate it. Both types are functionally identical – the alias
+ * exists to make intent clearer in code that focuses on data mutation.
+ *
+ * @example
+ * ```ts
+ * const normalizeEmail = createMutatePlugin(
+ *   'normalizeEmail',
+ *   {},
+ *   {
+ *     insert: (_context, data) => ({
+ *       ...data,
+ *       email: data.email?.toLowerCase().trim(),
+ *     }),
+ *   }
+ * );
+ * ```
+ */
+export type MutatePlugin<Type extends string = string, Config = unknown> = ValidatePlugin<
+	Type,
+	Config
+>;
 
 /**
  * Type guard to check if something is a ValidatePlugin
@@ -138,9 +174,10 @@ export type ValidatePluginRecord = Record<string, ValidatePlugin>;
 // =============================================================================
 
 /**
- * Run all validate plugins for an operation.
- * Plugins are run in order and each receives the output of the previous.
+ * Run all plugins for an operation.
+ * Plugins are run in order and each receives the (possibly transformed) output of the previous.
  * All plugin verify functions are awaited (supports async plugins).
+ * Plugins may return modified data to transform it, or return the data unchanged for validation-only behaviour.
  */
 export async function runValidatePlugins(
 	plugins: ValidatePlugin[],
@@ -188,6 +225,46 @@ export function createValidatePlugin<Type extends string, Config>(
 	config: Config,
 	verify: ValidatePlugin<Type, Config>['verify']
 ): ValidatePlugin<Type, Config> {
+	return {
+		_type: type,
+		config,
+		verify,
+	};
+}
+
+/**
+ * Helper to create a plugin whose primary purpose is to transform data.
+ * Functionally identical to {@link createValidatePlugin} – the separate helper
+ * exists to make intent clearer at the call site.
+ *
+ * @param type - Unique identifier for this plugin type
+ * @param config - Plugin configuration data
+ * @param verify - Object with insert and/or patch functions that return (possibly modified) data
+ * @returns A MutatePlugin instance
+ *
+ * @example
+ * ```ts
+ * const normalizeEmail = createMutatePlugin(
+ *   'normalizeEmail',
+ *   {},
+ *   {
+ *     insert: (_context, data) => ({
+ *       ...data,
+ *       email: data.email?.toLowerCase().trim(),
+ *     }),
+ *     patch: (_context, data) => ({
+ *       ...data,
+ *       ...(data.email !== undefined && { email: data.email?.toLowerCase().trim() }),
+ *     }),
+ *   }
+ * );
+ * ```
+ */
+export function createMutatePlugin<Type extends string, Config>(
+	type: Type,
+	config: Config,
+	verify: MutatePlugin<Type, Config>['verify']
+): MutatePlugin<Type, Config> {
 	return {
 		_type: type,
 		config,

@@ -2,8 +2,8 @@
 export { verifyConfig } from './verifyConfig';
 
 // Plugin system
-export { createValidatePlugin, isValidatePlugin, runValidatePlugins } from './plugin';
-export type { ValidateContext, ValidatePlugin, ValidatePluginRecord } from './plugin';
+export { createValidatePlugin, createMutatePlugin, isValidatePlugin, runValidatePlugins } from './plugin';
+export type { ValidateContext, ValidatePlugin, MutatePlugin, ValidatePluginRecord } from './plugin';
 
 // All types
 export type {

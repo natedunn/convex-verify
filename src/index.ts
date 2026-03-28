@@ -3,8 +3,8 @@
 // =============================================================================
 
 export { verifyConfig } from './core';
-export { createValidatePlugin, isValidatePlugin, runValidatePlugins } from './core';
-export type { ValidateContext, ValidatePlugin, ValidatePluginRecord } from './core';
+export { createValidatePlugin, createMutatePlugin, isValidatePlugin, runValidatePlugins } from './core';
+export type { ValidateContext, ValidatePlugin, MutatePlugin, ValidatePluginRecord } from './core';
 export type {
 	// Utility types
 	Prettify,

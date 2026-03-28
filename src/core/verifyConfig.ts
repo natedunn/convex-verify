@@ -40,8 +40,9 @@ type VerifyConfigInputWithPlugins = VerifyConfigInput & {
 	uniqueColumn?: ValidatePlugin<"uniqueColumn", any>;
 
 	/**
-	 * Additional validate plugins to run after transforms.
-	 * These plugins can validate data but don't affect input types.
+	 * Additional plugins to run after transform configs (defaultValues, etc.).
+	 * These plugins can validate data, transform/mutate it, or both.
+	 * Plugins run in order; each receives the (possibly transformed) output of the previous.
 	 *
 	 * Built-in plugins (uniqueRow, uniqueColumn) can be added here
 	 * as an alternative to using their dedicated config keys.
@@ -111,7 +112,7 @@ export const verifyConfig = <
 	 *
 	 * Execution order:
 	 * 1. Transform: defaultValues (makes fields optional, applies defaults)
-	 * 2. Validate: plugins (in order provided)
+	 * 2. Plugins: run in order (can validate, transform, or both)
 	 * 3. Insert into database
 	 */
 	const insert = async <
@@ -172,7 +173,7 @@ export const verifyConfig = <
 	 * Use dangerouslyPatch() to bypass protected column restrictions.
 	 *
 	 * Execution order:
-	 * 1. Validate: plugins (in order provided)
+	 * 1. Plugins: run in order (can validate, transform, or both)
 	 * 2. Patch in database
 	 *
 	 * Note: defaultValues is skipped for patch operations
