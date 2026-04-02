@@ -42,10 +42,13 @@ type VerifyConfigInputWithPlugins = VerifyConfigInput & {
 	/**
 	 * Additional plugins to run after transform configs (defaultValues, etc.).
 	 * These plugins can validate data, transform/mutate it, or both.
+	 * Custom plugins run before built-in uniqueness plugins so the built-ins
+	 * validate the final transformed payload.
 	 * Plugins run in order; each receives the (possibly transformed) output of the previous.
 	 *
 	 * Built-in plugins (uniqueRow, uniqueColumn) can be added here
-	 * as an alternative to using their dedicated config keys.
+	 * as an alternative to using their dedicated config keys when you need
+	 * explicit ordering.
 	 */
 	plugins?: ValidatePlugin[];
 };
@@ -98,14 +101,42 @@ export const verifyConfig = <
 	_schema: SchemaDefinition<S, boolean>,
 	configs: VC,
 ) => {
-	// Get all validate plugins - merge built-in configs with plugins array
-	const validatePlugins: ValidatePlugin[] = [
-		// Built-in validation configs (if provided as named keys)
+	const customPlugins = configs.plugins ?? [];
+	const builtInValidatePlugins: ValidatePlugin[] = [
 		...(configs.uniqueRow ? [configs.uniqueRow] : []),
 		...(configs.uniqueColumn ? [configs.uniqueColumn] : []),
-		// Additional plugins from the plugins array
-		...(configs.plugins ?? []),
 	];
+	// Run custom plugins first so built-in uniqueness checks validate transformed data.
+	const validatePlugins: ValidatePlugin[] = [...customPlugins, ...builtInValidatePlugins];
+	const protectedColumns = configs.protectedColumns?.config ?? {};
+
+	const stripProtectedPatchColumns = <T extends Record<string, any>>(tableName: string, data: T) => {
+		const protectedKeys = protectedColumns[tableName] ?? [];
+
+		if (protectedKeys.length === 0) {
+			return {
+				filteredData: data,
+				removedColumns: [] as string[],
+			};
+		}
+
+		const removedColumns = protectedKeys.filter((key) => key in data).map(String);
+		if (removedColumns.length === 0) {
+			return {
+				filteredData: data,
+				removedColumns,
+			};
+		}
+
+		const filteredData = Object.fromEntries(
+			Object.entries(data).filter(([key]) => !protectedKeys.includes(key as string))
+		) as T;
+
+		return {
+			filteredData,
+			removedColumns,
+		};
+	};
 
 	/**
 	 * Insert a document with all configured verifications applied.
@@ -145,9 +176,9 @@ export const verifyConfig = <
 			);
 		}
 
-		// === VALIDATE PHASE ===
+		// === PLUGIN PHASE ===
 
-		// Run all validate plugins
+		// Run all plugins
 		if (validatePlugins.length > 0) {
 			verifiedData = await runValidatePlugins(
 				validatePlugins,
@@ -173,8 +204,10 @@ export const verifyConfig = <
 	 * Use dangerouslyPatch() to bypass protected column restrictions.
 	 *
 	 * Execution order:
-	 * 1. Plugins: run in order (can validate, transform, or both)
-	 * 2. Patch in database
+	 * 1. Protected columns are stripped from the patch payload
+	 * 2. Plugins: run in order (can validate, transform, or both)
+	 * 3. Protected columns are stripped again if plugins reintroduced them
+	 * 4. Patch in database
 	 *
 	 * Note: defaultValues is skipped for patch operations
 	 */
@@ -194,31 +227,54 @@ export const verifyConfig = <
 		options?: {
 			onFail?: OnFailCallback<D>;
 		},
-	): Promise<void> => {
-		let verifiedData = data as Partial<
-			WithoutSystemFields<DocumentByName<DataModel, TN>>
-		>;
+		): Promise<void> => {
+			let verifiedData = data as Partial<
+				WithoutSystemFields<DocumentByName<DataModel, TN>>
+			>;
+			const removedProtectedColumns = new Set<string>();
 
-		// === VALIDATE PHASE ===
+			const stripProtectedColumns = () => {
+				const filtered = stripProtectedPatchColumns(tableName as string, verifiedData);
+				for (const column of filtered.removedColumns) {
+					removedProtectedColumns.add(column);
+				}
+				verifiedData = filtered.filteredData;
+			};
 
-		// Run all validate plugins
-		if (validatePlugins.length > 0) {
-			verifiedData = await runValidatePlugins(
-				validatePlugins,
-				{
-					ctx,
-					tableName: tableName as string,
-					operation: "patch",
-					patchId: id,
-					onFail: options?.onFail,
-					schema: _schema,
-				},
-				verifiedData,
-			);
-		}
+			// Enforce protected columns at runtime in addition to the patch() input type.
+			stripProtectedColumns();
 
-		await ctx.db.patch(id, verifiedData);
-	};
+			// === PLUGIN PHASE ===
+
+			// Run all plugins
+			if (validatePlugins.length > 0) {
+				verifiedData = await runValidatePlugins(
+					validatePlugins,
+					{
+						ctx,
+						tableName: tableName as string,
+						operation: "patch",
+						patchId: id,
+						onFail: options?.onFail,
+						schema: _schema,
+					},
+					verifiedData,
+				);
+			}
+
+			// Plugins may reintroduce protected columns; strip them again.
+			stripProtectedColumns();
+			if (removedProtectedColumns.size > 0) {
+				options?.onFail?.({
+					editableColumn: {
+						removedColumns: [...removedProtectedColumns],
+						filteredData: verifiedData as D,
+					},
+				});
+			}
+
+			await ctx.db.patch(id, verifiedData);
+		};
 
 	/**
 	 * Patch a document bypassing protected column restrictions.
@@ -242,9 +298,9 @@ export const verifyConfig = <
 	): Promise<void> => {
 		let verifiedData = data;
 
-		// === VALIDATE PHASE ===
+		// === PLUGIN PHASE ===
 
-		// Run all validate plugins (protection is bypassed, but validation still runs)
+		// Run all plugins (protection is bypassed, but validation still runs)
 		if (validatePlugins.length > 0) {
 			verifiedData = await runValidatePlugins(
 				validatePlugins,

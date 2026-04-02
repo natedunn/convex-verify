@@ -2,6 +2,8 @@ import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { verifyConfig } from "./verifyConfig";
 import { createMutatePlugin, createValidatePlugin } from "./plugin";
+import { uniqueColumnConfig } from "../plugins/uniqueColumnConfig";
+import { uniqueRowConfig } from "../plugins/uniqueRowConfig";
 import schema from "../__tests__/schema";
 import { modules } from "../__tests__/modules";
 
@@ -227,6 +229,78 @@ describe("plugins can transform data", () => {
 			await t.run(async (ctx) => {
 				const doc = await ctx.db.get(userId) as any;
 				expect(doc?.email).toBe("async@example.com");
+			});
+		});
+	});
+
+	describe("built-in uniqueness plugins validate transformed data", () => {
+		it("runs custom plugins before uniqueColumn config", async () => {
+			const t = convexTest(schema, modules);
+
+			const normalizeEmail = createMutatePlugin("normalizeEmail", {}, {
+				insert: (_context, data) => ({
+					...data,
+					email: (data.email as string).toLowerCase().trim(),
+				}),
+			});
+
+			const { insert } = verifyConfig(schema, {
+				plugins: [normalizeEmail],
+				uniqueColumn: uniqueColumnConfig(schema, {
+					users: ["by_email"],
+				}),
+			});
+
+			await t.run(async (ctx) => {
+				await insert(ctx, "users", {
+					email: "alice@example.com",
+					username: "alice",
+				});
+			});
+
+			await t.run(async (ctx) => {
+				await expect(
+					insert(ctx, "users", {
+						email: " ALICE@EXAMPLE.COM ",
+						username: "alice-2",
+					})
+				).rejects.toThrow(/already exists/);
+			});
+		});
+
+		it("runs custom plugins before uniqueRow config", async () => {
+			const t = convexTest(schema, modules);
+
+			const normalizeSlug = createMutatePlugin("normalizeSlug", {}, {
+				insert: (_context, data) => ({
+					...data,
+					slug: (data.slug as string).toLowerCase().trim(),
+				}),
+			});
+
+			const { insert } = verifyConfig(schema, {
+				plugins: [normalizeSlug],
+				uniqueRow: uniqueRowConfig(schema, {
+					posts: ["by_author_slug"],
+				}),
+			});
+
+			await t.run(async (ctx) => {
+				await insert(ctx, "posts", {
+					title: "First",
+					slug: "hello-world",
+					authorId: "author1",
+				});
+			});
+
+			await t.run(async (ctx) => {
+				await expect(
+					insert(ctx, "posts", {
+						title: "Duplicate",
+						slug: " Hello-World ",
+						authorId: "author1",
+					})
+				).rejects.toThrow(/existing row|already exists/);
 			});
 		});
 	});

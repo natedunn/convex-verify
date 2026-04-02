@@ -103,8 +103,8 @@ const { insert, patch, dangerouslyPatch } = verifyConfig(schema, {
 
 | Function           | Description                                                                         |
 | ------------------ | ----------------------------------------------------------------------------------- |
-| `insert`           | Insert with default values applied and validation plugins run                       |
-| `patch`            | Patch with protected columns removed from type and validation plugins run           |
+| `insert`           | Insert with default values applied and plugins run                                  |
+| `patch`            | Patch with protected columns removed and plugins run                                |
 | `dangerouslyPatch` | Patch with full access to all columns (bypasses protected columns type restriction) |
 
 ---
@@ -262,29 +262,32 @@ const config = uniqueColumnConfig(schema, {
 
 ## Custom Plugins
 
-Custom plugins let you add your own validation logic that runs during `insert()` and `patch()` operations.
+Custom plugins let you add your own validation and transformation logic that runs during `insert()` and `patch()` operations.
 
 ### Use Cases
 
 - **Authorization checks** - Verify the user has permission to create/modify a document
 - **Data validation** - Check that values meet business rules (e.g., positive numbers, valid URLs)
 - **Cross-field validation** - Ensure fields are consistent with each other
+- **Normalization / sanitization** - Lowercase emails, trim slugs, clean incoming strings
 - **External validation** - Check against external APIs or services
 - **Audit logging** - Log operations before they complete
 
 ### Limitations
 
 - Plugins run **after** type-affecting configs (like `defaultValues`) have been applied
-- Plugins **cannot modify types** - they validate data but don't change the TypeScript types
-- Plugins should **return the data unchanged** - they're for validation, not transformation
+- Plugins **cannot modify types** - they can change runtime data, but not the TypeScript types
+- Plugins may **return modified data** - use this to sanitize, normalize, or enrich payloads
+- Custom plugins from `plugins: []` run **before** built-in `uniqueRow` / `uniqueColumn` configs
+- `patch()` still strips protected columns at runtime; use `dangerouslyPatch()` if a plugin must change them
 - Plugin errors should use `ConvexError` for proper error handling on the client
 
 ### Creating a Plugin
 
-Use `createValidatePlugin` to create a plugin:
+Use `createValidatePlugin` for validation-oriented plugins or `createMutatePlugin` when the main job is transforming data:
 
 ```ts
-import { createValidatePlugin } from "convex-verify";
+import { createMutatePlugin, createValidatePlugin } from "convex-verify";
 import { ConvexError } from "convex/values";
 
 const myPlugin = createValidatePlugin(
@@ -301,6 +304,25 @@ const myPlugin = createValidatePlugin(
 			// Validation logic for patches
 			return data;
 		},
+	},
+);
+```
+
+```ts
+const normalizeEmail = createMutatePlugin(
+	"normalizeEmail",
+	{},
+	{
+		insert: (_context, data) => ({
+			...data,
+			email: data.email.toLowerCase().trim(),
+		}),
+		patch: (_context, data) => ({
+			...data,
+			...(data.email !== undefined && {
+				email: data.email.toLowerCase().trim(),
+			}),
+		}),
 	},
 );
 ```
@@ -324,10 +346,10 @@ type ValidateContext = {
 ```ts
 const requiredFieldsPlugin = createValidatePlugin(
 	"requiredFields",
-	{ fields: ["title", "content"] },
+	{},
 	{
-		insert: (context, data) => {
-			for (const field of context.config.fields) {
+		insert: (_context, data) => {
+			for (const field of ["title", "content"]) {
 				if (!data[field]) {
 					throw new ConvexError({
 						code: "VALIDATION_ERROR",

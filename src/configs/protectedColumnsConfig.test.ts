@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { verifyConfig } from "../core/verifyConfig";
+import { createMutatePlugin } from "../core/plugin";
 import { protectedColumnsConfig } from "./protectedColumnsConfig";
 import schema from "../__tests__/schema";
 import { modules } from "../__tests__/modules";
@@ -74,8 +75,87 @@ describe("protectedColumnsConfig", () => {
 				expect(post?.authorId).toBe("author123");
 			});
 		});
-	});
 
+			it("strips protected columns at runtime when patch is called from untyped code", async () => {
+				const t = convexTest(schema, modules);
+
+				const { insert, patch } = verifyConfig(schema, {
+					protectedColumns: protectedColumnsConfig(schema, {
+						posts: ["authorId"],
+					}),
+				});
+
+				let postId: any;
+				let removedColumns: string[] = [];
+				await t.run(async (ctx) => {
+					postId = await insert(ctx, "posts", {
+						title: "Original",
+						slug: "original",
+						authorId: "author123",
+					});
+				});
+
+				await t.run(async (ctx) => {
+					await patch(
+						ctx,
+						"posts",
+						postId,
+						{
+							title: "Updated",
+							authorId: "author456",
+						} as any,
+						{
+							onFail: (args) => {
+								removedColumns = args.editableColumn?.removedColumns ?? [];
+							},
+						}
+					);
+
+					const post = await ctx.db.get(postId);
+					expect(post?.title).toBe("Updated");
+					expect(post?.authorId).toBe("author123");
+				});
+
+				expect(removedColumns).toEqual(["authorId"]);
+			});
+
+			it("strips protected columns reintroduced by plugins during patch", async () => {
+				const t = convexTest(schema, modules);
+
+				const reassignAuthor = createMutatePlugin("reassignAuthor", {}, {
+					patch: (_context, data) => ({
+						...data,
+						authorId: "plugin-author",
+					}),
+				});
+
+				const { insert, patch } = verifyConfig(schema, {
+					protectedColumns: protectedColumnsConfig(schema, {
+						posts: ["authorId"],
+					}),
+					plugins: [reassignAuthor],
+				});
+
+				let postId: any;
+				await t.run(async (ctx) => {
+					postId = await insert(ctx, "posts", {
+						title: "Original",
+						slug: "original",
+						authorId: "author123",
+					});
+				});
+
+				await t.run(async (ctx) => {
+					await patch(ctx, "posts", postId, {
+						title: "Updated by plugin",
+					});
+
+					const post = await ctx.db.get(postId);
+					expect(post?.title).toBe("Updated by plugin");
+					expect(post?.authorId).toBe("author123");
+				});
+			});
+		});
 	describe("dangerouslyPatch", () => {
 		it("allows patching protected columns", async () => {
 			const t = convexTest(schema, modules);
