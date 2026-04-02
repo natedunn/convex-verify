@@ -1,16 +1,27 @@
-# .github/workflows/release.yml
 name: Release
 
 on:
+  workflow_dispatch:
   push:
     branches:
-      - main          # or master; adjust to your default branch
+      - main
+    paths:
+      - packages/convex-verify/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .releaserc.cjs
+      - .github/workflows/release.yml
 
 permissions:
-  contents: write     # create GitHub releases / tags
-  issues: write       # comment on released issues
-  pull-requests: write # comment on released PRs
-  id-token: write   # enable OIDC trusted publishing to npm
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -21,19 +32,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # semantic-release needs full history
+          fetch-depth: 0
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: latest
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: 22
           cache: pnpm
-          registry-url: 'https://registry.npmjs.org'
+
+      - name: Upgrade npm for trusted publishing
+        run: npm install --global npm@11
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -47,4 +58,4 @@ jobs:
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm exec semantic-release
+        run: pnpm release
