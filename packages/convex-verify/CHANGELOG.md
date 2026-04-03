@@ -1,3 +1,16 @@
+# [1.1.0](https://github.com/natedunn/convex-verify/compare/v1.0.5...v1.1.0) (2026-04-03)
+
+
+### Bug Fixes
+
+* apply review comments — terminology, types, and timestamp bug ([eb97710](https://github.com/natedunn/convex-verify/commit/eb97710c2cab68e85257d816721c9c2c74512e88))
+* use function form for per-insert createdAt default in example app ([43e46c4](https://github.com/natedunn/convex-verify/commit/43e46c462c5bb30a002d9eea8ca11b5223f00ee9))
+
+
+### Features
+
+* allow plugins to transform/mutate data, not just validate ([652ccdb](https://github.com/natedunn/convex-verify/commit/652ccdb8aaad0967d9d4cb6237f82065c0700013))
+
 ## [1.0.5](https://github.com/natedunn/convex-verify/compare/v1.0.4...v1.0.5) (2026-01-20)
 
 
