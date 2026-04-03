@@ -1,5 +1,6 @@
 import {
 	DataModelFromSchemaDefinition,
+	GenericDocument,
 	Indexes,
 	NamedTableInfo,
 	SchemaDefinition,
@@ -32,7 +33,7 @@ export type BaseConfigReturn = {
 // OnFail Types
 // =============================================================================
 
-export type OnFailArgs<D> = {
+export type OnFailArgs<D extends GenericDocument> = {
 	uniqueColumn?: {
 		conflictingColumn: keyof D;
 		existingData: D;
@@ -42,14 +43,14 @@ export type OnFailArgs<D> = {
 	};
 	editableColumn?: {
 		removedColumns: string[];
-		filteredData: D;
+		filteredData: Partial<WithoutSystemFields<D>>;
 	};
 	requiredColumn?: {
 		missingColumn: keyof D;
 	};
 };
 
-export type OnFailCallback<D> = (args: OnFailArgs<D>) => void;
+export type OnFailCallback<D extends GenericDocument> = (args: OnFailArgs<D>) => void;
 
 // =============================================================================
 // Config Data Types (what the user provides)

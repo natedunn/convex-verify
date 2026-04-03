@@ -29,7 +29,7 @@ export const { insert } = verifyConfig(schema, {
 	extensions: [normalizeEmail],
 	defaultValues: defaultValuesConfig(schema, {
 		users: {
-			createdAt: Date.now(),
+			createdAt: () => Date.now(),
 			status: "pending",
 		},
 	}),

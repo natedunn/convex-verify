@@ -196,7 +196,7 @@ export const verifyConfig = <
 			options?.onFail?.({
 				editableColumn: {
 					removedColumns: [...removedProtectedColumns],
-					filteredData: verifiedData as D,
+					filteredData: verifiedData,
 				},
 			});
 		}

@@ -119,7 +119,7 @@ describe("protectedColumnsConfig", () => {
 				expect(removedColumns).toEqual(["authorId"]);
 			});
 
-			it("strips protected columns reintroduced by plugins during patch", async () => {
+			it("strips protected columns reintroduced by extensions during patch", async () => {
 				const t = convexTest(schema, modules);
 
 				const reassignAuthor = createExtension((input) => {

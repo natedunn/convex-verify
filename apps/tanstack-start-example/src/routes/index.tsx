@@ -62,7 +62,7 @@ function HomePage() {
         <h2>Create user</h2>
         <p className="muted">
           Try creating `ALICE@EXAMPLE.COM`, then try `alice@example.com` again.
-          The second insert should fail because the normalization plugin runs
+          The second insert should fail because the normalization extension runs
           before the unique email check.
         </p>
 
