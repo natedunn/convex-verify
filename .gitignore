@@ -25,3 +25,6 @@ coverage/
 
 # misc
 *.tgz
+
+# local agent settings
+.claude/settings.local.json
