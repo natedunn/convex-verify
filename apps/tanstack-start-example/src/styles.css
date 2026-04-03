@@ -1,0 +1,188 @@
+:root {
+  color-scheme: light;
+  font-family: "IBM Plex Sans", "Helvetica Neue", sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(255, 210, 140, 0.45), transparent 32%),
+    linear-gradient(180deg, #f7f1e4 0%, #efe5d3 100%);
+  color: #1b1a17;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+}
+
+code {
+  font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+}
+
+.page-shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+
+.hero {
+  margin-bottom: 24px;
+  padding: 28px;
+  border: 1px solid rgba(27, 26, 23, 0.12);
+  border-radius: 24px;
+  background: rgba(255, 252, 246, 0.82);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 18px 60px rgba(100, 72, 24, 0.12);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #8a5a14;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 0.98;
+}
+
+.lede {
+  max-width: 52rem;
+  margin: 12px 0 0;
+  color: #534a3c;
+}
+
+.nav {
+  display: flex;
+  gap: 14px;
+  margin-top: 18px;
+  font-weight: 600;
+}
+
+.content {
+  display: grid;
+  gap: 18px;
+}
+
+.card {
+  padding: 22px;
+  border: 1px solid rgba(27, 26, 23, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 252, 246, 0.88);
+  box-shadow: 0 14px 40px rgba(100, 72, 24, 0.08);
+}
+
+.card h2 {
+  margin-top: 0;
+}
+
+.muted {
+  color: #6a6154;
+}
+
+.checklist {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.form {
+  display: grid;
+  gap: 14px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.field input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(27, 26, 23, 0.16);
+  border-radius: 14px;
+  background: #fffdf8;
+  font: inherit;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+.button {
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #1d5c49;
+  color: #fffdf8;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.error {
+  margin-bottom: 0;
+  color: #992d1f;
+  font-weight: 600;
+}
+
+.user-list {
+  display: grid;
+  gap: 12px;
+}
+
+.user-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(250, 244, 231, 0.95);
+}
+
+.user-row p {
+  margin: 4px 0 0;
+}
+
+.meta {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+  color: #6a6154;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 720px) {
+  .page-shell {
+    padding: 20px 14px 48px;
+  }
+
+  .hero,
+  .card {
+    padding: 18px;
+  }
+
+  .user-row {
+    flex-direction: column;
+  }
+
+  .meta {
+    text-align: left;
+  }
+}

@@ -1,7 +1,7 @@
 import { DataModelFromSchemaDefinition, GenericSchema, SchemaDefinition } from 'convex/server';
 import { ConvexError } from 'convex/values';
 
-import { createValidatePlugin, ValidateContext, ValidatePlugin } from '../core/plugin';
+import { ExtensionContext, SchemaExtension } from '../core/plugin';
 import {
 	normalizeIndexConfigEntry,
 	UniqueColumnConfigData,
@@ -9,7 +9,7 @@ import {
 } from '../core/types';
 
 /**
- * Creates a validate plugin that enforces column uniqueness using single-column indexes.
+ * Creates an extension that enforces column uniqueness using single-column indexes.
  *
  * This is useful when you have a column that must be unique across all rows,
  * like usernames or email addresses.
@@ -19,7 +19,7 @@ import {
  *
  * @param schema - Your Convex schema definition
  * @param config - Object mapping table names to arrays of index configs
- * @returns A ValidatePlugin for use with verifyConfig
+ * @returns An extension for use with verifyConfig
  *
  * @example
  * ```ts
@@ -47,7 +47,7 @@ import {
  *
  * // Use with verifyConfig
  * const { insert, patch } = verifyConfig(schema, {
- *   plugins: [uniqueColumn],
+ *   extensions: [uniqueColumn],
  * });
  * ```
  */
@@ -58,7 +58,7 @@ export const uniqueColumnConfig = <
 >(
 	_schema: S,
 	config: C
-): ValidatePlugin<'uniqueColumn', C> => {
+): SchemaExtension<S, 'uniqueColumn', C> => {
 	const uniqueColumnError = (message: string): never => {
 		throw new ConvexError({
 			message,
@@ -69,10 +69,10 @@ export const uniqueColumnConfig = <
 	/**
 	 * Core verification logic shared between insert and patch
 	 */
-	const verifyUniqueness = async (
-		context: ValidateContext<string>,
-		data: Record<string, any>
-	): Promise<Record<string, any>> => {
+	const verifyUniqueness = async <TN extends string, D extends Record<string, any>>(
+		context: ExtensionContext<TN>,
+		data: D
+	): Promise<D> => {
 		const { ctx, tableName, patchId, onFail } = context;
 
 		const tableConfig = config[tableName as keyof typeof config] as
@@ -121,7 +121,14 @@ export const uniqueColumnConfig = <
 				}
 
 				// Check if both existing and data have the same identifier value
-				if (existing[identifier] && data[identifier] && existing[identifier] === data[identifier]) {
+				const existingValue = existing[identifier];
+				const incomingValue = data[identifier];
+
+				if (
+					existingValue !== undefined &&
+					incomingValue !== undefined &&
+					existingValue === incomingValue
+				) {
 					isOwnDocument = true;
 					break;
 				}
@@ -148,12 +155,16 @@ export const uniqueColumnConfig = <
 		return data;
 	};
 
-	return createValidatePlugin('uniqueColumn', config, {
-		insert: async (context, data) => {
-			return verifyUniqueness(context, data);
+	const extension = {
+		_type: 'uniqueColumn',
+		config,
+		async verify(input) {
+			return (await verifyUniqueness(
+				input as unknown as ExtensionContext<typeof input.tableName>,
+				input.data as Record<string, any>
+			)) as typeof input.data;
 		},
-		patch: async (context, data) => {
-			return verifyUniqueness(context, data);
-		},
-	});
+	} as SchemaExtension<S, 'uniqueColumn', C>;
+
+	return extension;
 };

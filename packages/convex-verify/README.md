@@ -2,7 +2,6 @@
 
 Type-safe verification and validation for Convex database operations.
 
-> Repo layout: this repository is a pnpm workspace. The publishable npm package lives in `packages/convex-verify`.
 
 ## Features
 

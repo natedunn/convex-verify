@@ -3,8 +3,15 @@
 // =============================================================================
 
 export { verifyConfig } from './core';
-export { createValidatePlugin, isValidatePlugin, runValidatePlugins } from './core';
-export type { ValidateContext, ValidatePlugin, ValidatePluginRecord } from './core';
+export { createExtension, isExtension, runExtensions } from './core';
+export type {
+	ExtensionContext,
+	ExtensionInput,
+	ExtensionInputForSchema,
+	Extension,
+	ExtensionRecord,
+	SchemaExtension,
+} from './core';
 export type {
 	// Utility types
 	Prettify,
@@ -37,7 +44,7 @@ export { protectedColumnsConfig } from './configs';
 export type { ProtectedColumnsConfigData } from './configs';
 
 // =============================================================================
-// Plugins
+// Built-in Extensions
 // =============================================================================
 
 export { uniqueRowConfig, uniqueColumnConfig } from './plugins';
