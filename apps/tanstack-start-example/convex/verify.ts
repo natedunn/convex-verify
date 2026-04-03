@@ -27,12 +27,12 @@ export const normalizeEmail = createExtension<typeof schema>((input) => {
 
 export const { insert } = verifyConfig(schema, {
 	extensions: [normalizeEmail],
-	defaultValues: defaultValuesConfig(schema, {
+	defaultValues: defaultValuesConfig(schema, () => ({
 		users: {
 			createdAt: Date.now(),
 			status: "pending",
 		},
-	}),
+	})),
 	uniqueColumn: uniqueColumnConfig(schema, {
 		users: ["by_email"],
 	}),
