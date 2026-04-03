@@ -69,7 +69,7 @@ export type DefaultValuesConfigData<DM extends DMGeneric> = {
 
 /**
  * Base options shared by all index-based config entries.
- * Individual plugins can extend this with their own options.
+ * Individual extensions can extend this with their own options.
  */
 export type IndexConfigBaseOptions = {
 	/** Additional identifiers to check if the existing row is the same document being updated */
@@ -202,9 +202,9 @@ export type ProtectedColumnsInput = {
 /**
  * Config input for verifyConfig.
  *
- * - `defaultValues`: Transform plugin that makes fields optional (affects types)
+ * - `defaultValues`: Transform config that makes fields optional (affects types)
  * - `protectedColumns`: Columns that cannot be patched (affects patch() types)
- * - `plugins`: Array of validate plugins (use for uniqueRow, uniqueColumn, custom plugins, etc.)
+ * Extension-specific options are added by `verifyConfig`.
  */
 export type VerifyConfigInput = {
 	defaultValues?: DefaultValuesInput;

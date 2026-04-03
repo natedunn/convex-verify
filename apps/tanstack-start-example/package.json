@@ -1,9 +1,12 @@
 {
-  "name": "@convex-verify/tanstack-start",
+  "name": "@convex-verify/tanstack-start-example",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "concurrently -k -n web,convex -c blue,green \"pnpm dev:web\" \"pnpm convex:dev\"",
+    "dev:web": "sh -c 'if command -v portless >/dev/null 2>&1; then portless run vite dev; else echo \"portless not found; starting vite dev directly\"; vite dev; fi'",
+    "dev:direct": "concurrently -k -n web,convex -c blue,green \"pnpm dev:web:direct\" \"pnpm convex:dev\"",
+    "dev:web:direct": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -22,6 +25,8 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
+    "portless": "^0.5.2",
     "typescript": "^5.9.3",
     "vite": "^8.0.3"
   }

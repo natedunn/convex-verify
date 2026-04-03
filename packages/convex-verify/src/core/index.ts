@@ -1,9 +1,16 @@
 // Main verifyConfig function
 export { verifyConfig } from './verifyConfig';
 
-// Plugin system
-export { createValidatePlugin, createMutatePlugin, isValidatePlugin, runValidatePlugins } from './plugin';
-export type { ValidateContext, ValidatePlugin, MutatePlugin, ValidatePluginRecord } from './plugin';
+// Extension system
+export { createExtension, isExtension, runExtensions } from './plugin';
+export type {
+	ExtensionContext,
+	ExtensionInput,
+	ExtensionInputForSchema,
+	Extension,
+	ExtensionRecord,
+	SchemaExtension,
+} from './plugin';
 
 // All types
 export type {

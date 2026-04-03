@@ -2,13 +2,14 @@
 
 Type-safe verification and validation for Convex database operations.
 
+
 ## Features
 
 - **Type-safe insert/patch** - Full TypeScript inference for your schema
 - **Default values** - Make fields optional in `insert()` with automatic defaults
 - **Protected columns** - Prevent accidental updates to critical fields in `patch()`
 - **Unique constraints** - Enforce unique rows and columns using your indexes
-- **Extensible** - Create your own validation plugins
+- **Extensible** - Create your own validation extensions
 
 ## Installation
 
@@ -95,7 +96,7 @@ const { insert, patch, dangerouslyPatch } = verifyConfig(schema, {
   protectedColumns?: ProtectedColumnsConfig,
   uniqueRow?: UniqueRowConfig,
   uniqueColumn?: UniqueColumnConfig,
-  plugins?: ValidatePlugin[],
+  extensions?: Extension[],
 });
 ```
 
@@ -103,8 +104,8 @@ const { insert, patch, dangerouslyPatch } = verifyConfig(schema, {
 
 | Function           | Description                                                                         |
 | ------------------ | ----------------------------------------------------------------------------------- |
-| `insert`           | Insert with default values applied and plugins run                                  |
-| `patch`            | Patch with protected columns removed and plugins run                                |
+| `insert`           | Insert with default values applied and extensions run                               |
+| `patch`            | Patch with protected columns removed and extensions run                             |
 | `dangerouslyPatch` | Patch with full access to all columns (bypasses protected columns type restriction) |
 
 ---
@@ -187,7 +188,7 @@ await dangerouslyPatch(ctx, "posts", id, {
 });
 ```
 
-**Note:** `dangerouslyPatch()` still runs validation plugins - only the type restriction is bypassed.
+**Note:** `dangerouslyPatch()` still runs validation extensions - only the type restriction is bypassed.
 
 ---
 
@@ -260,9 +261,9 @@ const config = uniqueColumnConfig(schema, {
 
 ---
 
-## Custom Plugins
+## Custom Extensions
 
-Custom plugins let you add your own validation and transformation logic that runs during `insert()` and `patch()` operations.
+Custom extensions let you add your own validation and transformation logic that runs during `insert()` and `patch()` operations.
 
 ### Use Cases
 
@@ -275,124 +276,110 @@ Custom plugins let you add your own validation and transformation logic that run
 
 ### Limitations
 
-- Plugins run **after** type-affecting configs (like `defaultValues`) have been applied
-- Plugins **cannot modify types** - they can change runtime data, but not the TypeScript types
-- Plugins may **return modified data** - use this to sanitize, normalize, or enrich payloads
-- Custom plugins from `plugins: []` run **before** built-in `uniqueRow` / `uniqueColumn` configs
-- `patch()` still strips protected columns at runtime; use `dangerouslyPatch()` if a plugin must change them
-- Plugin errors should use `ConvexError` for proper error handling on the client
+- Extensions run **after** type-affecting configs (like `defaultValues`) have been applied
+- Extensions **cannot modify types** - they can change runtime data, but not the TypeScript types
+- Extensions may **return modified data** - use this to sanitize, normalize, or enrich payloads
+- Custom extensions from `extensions: []` run **before** built-in `uniqueRow` / `uniqueColumn` configs
+- `patch()` still strips protected columns at runtime; use `dangerouslyPatch()` if an extension must change them
+- Extension errors should use `ConvexError` for proper error handling on the client
 
-### Creating a Plugin
+### Creating an Extension
 
-Use `createValidatePlugin` for validation-oriented plugins or `createMutatePlugin` when the main job is transforming data:
+Use `createExtension`. If you want schema-aware typing in the callback, pass your schema type as the generic:
 
 ```ts
-import { createMutatePlugin, createValidatePlugin } from "convex-verify";
+import { createExtension } from "convex-verify";
 import { ConvexError } from "convex/values";
 
-const myPlugin = createValidatePlugin(
-	"pluginName", // Unique identifier
-	{
-		/* config */
-	}, // Your configuration object
-	{
-		insert: (context, data) => {
-			// Validation logic for inserts
-			return data;
-		},
-		patch: (context, data) => {
-			// Validation logic for patches
-			return data;
-		},
-	},
-);
+const normalizeEmail = createExtension<typeof schema>((input) => {
+	if (input.tableName !== "users") {
+		return input.data;
+	}
+
+	if (input.operation === "insert") {
+		return {
+			...input.data,
+			email: input.data.email.toLowerCase().trim(),
+		};
+	}
+
+	return {
+		...input.data,
+		...(input.data.email !== undefined && {
+			email: input.data.email.toLowerCase().trim(),
+		}),
+	};
+});
 ```
 
-```ts
-const normalizeEmail = createMutatePlugin(
-	"normalizeEmail",
-	{},
-	{
-		insert: (_context, data) => ({
-			...data,
-			email: data.email.toLowerCase().trim(),
-		}),
-		patch: (_context, data) => ({
-			...data,
-			...(data.email !== undefined && {
-				email: data.email.toLowerCase().trim(),
-			}),
-		}),
-	},
-);
-```
+Use a single `input` parameter instead of destructuring when you want narrowing.
+That lets TypeScript narrow `data` from both `tableName` and `operation`.
 
-### Plugin Context
+### Extension Context
 
-Your plugin functions receive a context object:
+Your extension function receives:
 
 ```ts
-type ValidateContext = {
+type ExtensionInput = {
 	ctx: GenericMutationCtx; // Convex mutation context (has ctx.db, etc.)
 	tableName: string; // Table being operated on
 	operation: "insert" | "patch";
 	patchId?: GenericId; // Document ID (patch only)
-	schema?: SchemaDefinition; // Schema reference
+	schema: SchemaDefinition; // Schema reference
+	data: unknown;
 };
 ```
 
 ### Example: Required Fields
 
 ```ts
-const requiredFieldsPlugin = createValidatePlugin(
-	"requiredFields",
-	{},
-	{
-		insert: (_context, data) => {
-			for (const field of ["title", "content"]) {
-				if (!data[field]) {
-					throw new ConvexError({
-						code: "VALIDATION_ERROR",
-						message: `Missing required field: ${field}`,
-					});
-				}
-			}
-			return data;
-		},
-	},
-);
+const requiredFields = createExtension<typeof schema>((input) => {
+	if (input.tableName !== "posts" || input.operation === "patch") {
+		return input.data;
+	}
+
+	for (const field of ["title", "content"]) {
+		if (!input.data[field]) {
+			throw new ConvexError({
+				code: "VALIDATION_ERROR",
+				message: `Missing required field: ${field}`,
+			});
+		}
+	}
+
+	return input.data;
+});
 ```
 
 ### Example: Async Authorization Check
 
 ```ts
-const ownershipPlugin = createValidatePlugin(
-	"checkOwnership",
-	{},
-	{
-		patch: async (context, data) => {
-			const doc = await context.ctx.db.get(context.patchId);
-			const identity = await context.ctx.auth.getUserIdentity();
+const ownership = createExtension<typeof schema>(async (input) => {
+	if (input.tableName !== "posts" || input.operation !== "patch") {
+		return input.data;
+	}
 
-			if (doc?.ownerId !== identity?.subject) {
-				throw new ConvexError({
-					code: "UNAUTHORIZED",
-					message: "You don't have permission to edit this document",
-				});
-			}
-			return data;
-		},
-	},
-);
+	const doc = await input.ctx.db.get(input.patchId);
+	const identity = await input.ctx.auth.getUserIdentity();
+
+	if (doc?.ownerId !== identity?.subject) {
+		throw new ConvexError({
+			code: "UNAUTHORIZED",
+			message: "You don't have permission to edit this document",
+		});
+	}
+
+	return input.data;
+});
 ```
 
-### Using Custom Plugins
+### Using Custom Extensions
 
-Add plugins to the `plugins` array in your config:
+Add extensions to the `extensions` array in your config:
 
 ```ts
 const { insert, patch } = verifyConfig(schema, {
-	plugins: [requiredFieldsPlugin, ownershipPlugin],
+	extensions: [requiredFields, ownership],
 });
 ```
 
@@ -419,7 +406,7 @@ await insert(ctx, "posts", data, {
 
 ### Error Types
 
-Built-in validation plugins throw `ConvexError` with these codes:
+Built-in validation extensions throw `ConvexError` with these codes:
 
 - `UNIQUE_ROW_VERIFICATION_ERROR` - Duplicate row detected
 - `UNIQUE_COLUMN_VERIFICATION_ERROR` - Duplicate column value detected

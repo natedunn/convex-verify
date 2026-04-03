@@ -18,9 +18,12 @@ No relative imports, no secondary repo checkout.
 
 ## What it tests
 
-- `createMutatePlugin` lowercases and trims email addresses
+- `createExtension` lowercases and trims email addresses
 - `uniqueColumnConfig` prevents duplicates after normalization
 - `defaultValuesConfig` fills `status` and `createdAt`
+
+The `convex-verify` setup for the example lives in `convex/verify.ts`, so the
+mutation file stays focused on the app-facing handlers.
 
 ## Setup
 
@@ -33,10 +36,10 @@ pnpm install
 2. Start Convex once from this app and copy the deployment URL it prints:
 
 ```bash
-pnpm --filter @convex-verify/tanstack-start convex:dev
+pnpm --filter @convex-verify/tanstack-start-example convex:dev
 ```
 
-3. Add the URL to `examples/tanstack-start/.env.local`:
+3. Add the URL to `apps/tanstack-start-example/.env.local`:
 
 ```bash
 VITE_CONVEX_URL=https://your-deployment.convex.cloud
@@ -45,7 +48,17 @@ VITE_CONVEX_URL=https://your-deployment.convex.cloud
 4. In another terminal, run the app:
 
 ```bash
-pnpm --filter @convex-verify/tanstack-start dev
+pnpm --filter @convex-verify/tanstack-start-example dev
+```
+
+That `dev` command starts both the TanStack Start Vite dev server and
+`convex dev` together. The web server runs through Portless by default, so it
+prints a `.localhost` URL instead of making you chase a port number.
+
+If you need the raw Vite server for debugging, use:
+
+```bash
+pnpm --filter @convex-verify/tanstack-start-example dev:direct
 ```
 
 ## Notes

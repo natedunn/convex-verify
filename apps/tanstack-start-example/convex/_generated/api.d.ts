@@ -9,6 +9,7 @@
  */
 
 import type * as users from "../users.js";
+import type * as verify from "../verify.js";
 
 import type {
   ApiFromModules,
@@ -18,6 +19,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   users: typeof users;
+  verify: typeof verify;
 }>;
 
 /**

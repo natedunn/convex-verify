@@ -1,307 +1,261 @@
 import { convexTest } from "convex-test";
-import { describe, it, expect } from "vitest";
-import { verifyConfig } from "./verifyConfig";
-import { createMutatePlugin, createValidatePlugin } from "./plugin";
-import { uniqueColumnConfig } from "../plugins/uniqueColumnConfig";
-import { uniqueRowConfig } from "../plugins/uniqueRowConfig";
+import { describe, expect, it } from "vitest";
+
 import schema from "../__tests__/schema";
 import { modules } from "../__tests__/modules";
+import { uniqueColumnConfig } from "../plugins/uniqueColumnConfig";
+import { uniqueRowConfig } from "../plugins/uniqueRowConfig";
+import { createExtension } from "./plugin";
+import { verifyConfig } from "./verifyConfig";
 
-describe("plugins can transform data", () => {
-	describe("createMutatePlugin – insert", () => {
-		it("transforms data before insert", async () => {
-			const t = convexTest(schema, modules);
+describe("extensions can transform data", () => {
+	it("transforms data before insert", async () => {
+		const t = convexTest(schema, modules);
 
-			// Plugin that normalizes email to lowercase
-			const normalizeEmail = createMutatePlugin("normalizeEmail", {}, {
-				insert: (_context, data) => ({
-					...data,
-					email: (data.email as string).toLowerCase().trim(),
-				}),
-			});
+		const normalizeEmail = createExtension((input) => {
+			const data = input.data as Record<string, any>;
+			return {
+				...data,
+				email: String(data.email).toLowerCase().trim(),
+			};
+		});
 
-			const { insert } = verifyConfig(schema, {
-				plugins: [normalizeEmail],
-			});
+		const { insert } = verifyConfig(schema, {
+			extensions: [normalizeEmail],
+		});
 
-			let insertedId: any;
-			await t.run(async (ctx) => {
-				insertedId = await insert(ctx, "users", {
-					email: "ALICE@EXAMPLE.COM",
-					username: "alice",
-				});
-			});
-
-			await t.run(async (ctx) => {
-				const doc = await ctx.db.get(insertedId) as any;
-				expect(doc?.email).toBe("alice@example.com");
+		let insertedId: any;
+		await t.run(async (ctx) => {
+			insertedId = await insert(ctx, "users", {
+				email: "ALICE@EXAMPLE.COM",
+				username: "alice",
 			});
 		});
 
-		it("chains multiple transform plugins in order", async () => {
-			const t = convexTest(schema, modules);
+		await t.run(async (ctx) => {
+			const doc = (await ctx.db.get(insertedId)) as any;
+			expect(doc?.email).toBe("alice@example.com");
+		});
+	});
 
-			const lowercaseEmail = createMutatePlugin("lowercaseEmail", {}, {
-				insert: (_ctx, data) => ({
-					...data,
-					email: (data.email as string).toLowerCase(),
-				}),
-			});
+	it("chains multiple extensions in order", async () => {
+		const t = convexTest(schema, modules);
 
-			const addDefaultUsername = createMutatePlugin("addDefaultUsername", {}, {
-				insert: (_ctx, data) => ({
-					...data,
-					// Derive username from email when username is empty
-					username: (data.username as string).length > 0
+		const lowercaseEmail = createExtension((input) => {
+			const data = input.data as Record<string, any>;
+			return {
+				...data,
+				email: String(data.email).toLowerCase(),
+			};
+		});
+
+		const addDefaultUsername = createExtension((input) => {
+			const data = input.data as Record<string, any>;
+			return {
+				...data,
+				username:
+					String(data.username).length > 0
 						? data.username
-						: (data.email as string).split("@")[0],
-				}),
-			});
+						: String(data.email).split("@")[0],
+			};
+		});
 
-			const { insert } = verifyConfig(schema, {
-				plugins: [lowercaseEmail, addDefaultUsername],
-			});
+		const { insert } = verifyConfig(schema, {
+			extensions: [lowercaseEmail, addDefaultUsername],
+		});
 
-			let insertedId: any;
-			await t.run(async (ctx) => {
-				insertedId = await insert(ctx, "users", {
-					email: "BOB@EXAMPLE.COM",
-					username: "",
-				});
+		let insertedId: any;
+		await t.run(async (ctx) => {
+			insertedId = await insert(ctx, "users", {
+				email: "BOB@EXAMPLE.COM",
+				username: "",
 			});
+		});
 
-			await t.run(async (ctx) => {
-				const doc = await ctx.db.get(insertedId) as any;
-				// lowercaseEmail runs first, then addDefaultUsername sees lowercased email
-				// email.split("@")[0] of "bob@example.com" → "bob"
-				expect(doc?.email).toBe("bob@example.com");
-				expect(doc?.username).toBe("bob");
-			});
+		await t.run(async (ctx) => {
+			const doc = (await ctx.db.get(insertedId)) as any;
+			expect(doc?.email).toBe("bob@example.com");
+			expect(doc?.username).toBe("bob");
 		});
 	});
 
-	describe("createMutatePlugin – patch", () => {
-		it("transforms data before patch", async () => {
-			const t = convexTest(schema, modules);
+	it("transforms data before patch", async () => {
+		const t = convexTest(schema, modules);
 
-			const normalizeEmail = createMutatePlugin("normalizeEmail", {}, {
-				patch: (_context, data) => ({
-					...data,
-					...(data.email !== undefined && {
-						email: (data.email as string).toLowerCase().trim(),
-					}),
+		const normalizeEmail = createExtension((input) => {
+			if (input.operation === "insert") {
+				return input.data;
+			}
+
+			const data = input.data as Record<string, any>;
+			return {
+				...data,
+				...(data.email !== undefined && {
+					email: String(data.email).toLowerCase().trim(),
 				}),
-			});
+			};
+		});
 
-			const { insert, patch } = verifyConfig(schema, {
-				plugins: [normalizeEmail],
-			});
+		const { insert, patch } = verifyConfig(schema, {
+			extensions: [normalizeEmail],
+		});
 
-			let userId: any;
-			await t.run(async (ctx) => {
-				userId = await insert(ctx, "users", {
-					email: "alice@example.com",
-					username: "alice",
-				});
+		let userId: any;
+		await t.run(async (ctx) => {
+			userId = await insert(ctx, "users", {
+				email: "alice@example.com",
+				username: "alice",
 			});
+		});
 
-			await t.run(async (ctx) => {
-				await patch(ctx, "users", userId, { email: "ALICE@UPDATED.COM" });
-			});
+		await t.run(async (ctx) => {
+			await patch(ctx, "users", userId, { email: "ALICE@UPDATED.COM" });
+		});
 
-			await t.run(async (ctx) => {
-				const doc = await ctx.db.get(userId) as any;
-				expect(doc?.email).toBe("alice@updated.com");
-			});
+		await t.run(async (ctx) => {
+			const doc = (await ctx.db.get(userId)) as any;
+			expect(doc?.email).toBe("alice@updated.com");
 		});
 	});
 
-	describe("createValidatePlugin still works as a transform", () => {
-		it("returns modified data from a validate plugin", async () => {
-			const t = convexTest(schema, modules);
+	it("can validate and transform in the same extension", async () => {
+		const t = convexTest(schema, modules);
 
-			// Config captured in closure; plugin verify functions receive ValidateContext (not plugin config)
-			const prefix = "post-";
-			const addSlugPrefix = createValidatePlugin("addSlugPrefix", {}, {
-				insert: (_context, data) => ({
-					...data,
-					slug: `${prefix}${data.slug}`,
+		const normalizeAndValidate = createExtension((input) => {
+			const data = input.data as Record<string, any>;
+			const normalized = String(data.username).toLowerCase().trim();
+			if (normalized.length < 3) {
+				throw new Error("Username too short");
+			}
+			return { ...data, username: normalized };
+		});
+
+		const { insert } = verifyConfig(schema, {
+			extensions: [normalizeAndValidate],
+		});
+
+		let userId: any;
+		await t.run(async (ctx) => {
+			userId = await insert(ctx, "users", {
+				email: "alice@example.com",
+				username: "  Alice  ",
+			});
+		});
+
+		await t.run(async (ctx) => {
+			const doc = (await ctx.db.get(userId)) as any;
+			expect(doc?.username).toBe("alice");
+		});
+
+		await t.run(async (ctx) => {
+			await expect(
+				insert(ctx, "users", {
+					email: "b@example.com",
+					username: "b",
 				}),
-			});
+			).rejects.toThrow("Username too short");
+		});
+	});
 
-			const { insert } = verifyConfig(schema, {
-				plugins: [addSlugPrefix],
-			});
+	it("supports async extensions", async () => {
+		const t = convexTest(schema, modules);
 
-			let postId: any;
-			await t.run(async (ctx) => {
-				postId = await insert(ctx, "posts", {
-					title: "Hello",
-					slug: "hello",
+		const asyncTransform = createExtension(async (input) => {
+			const data = input.data as Record<string, any>;
+			await Promise.resolve();
+			return {
+				...data,
+				email: String(data.email).toLowerCase(),
+			};
+		});
+
+		const { insert } = verifyConfig(schema, {
+			extensions: [asyncTransform],
+		});
+
+		let userId: any;
+		await t.run(async (ctx) => {
+			userId = await insert(ctx, "users", {
+				email: "ASYNC@EXAMPLE.COM",
+				username: "asyncuser",
+			});
+		});
+
+		await t.run(async (ctx) => {
+			const doc = (await ctx.db.get(userId)) as any;
+			expect(doc?.email).toBe("async@example.com");
+		});
+	});
+
+	it("runs custom extensions before uniqueColumn config", async () => {
+		const t = convexTest(schema, modules);
+
+		const normalizeEmail = createExtension((input) => {
+			const data = input.data as Record<string, any>;
+			return {
+				...data,
+				email: String(data.email).toLowerCase().trim(),
+			};
+		});
+
+		const { insert } = verifyConfig(schema, {
+			extensions: [normalizeEmail],
+			uniqueColumn: uniqueColumnConfig(schema, {
+				users: ["by_email"],
+			}),
+		});
+
+		await t.run(async (ctx) => {
+			await insert(ctx, "users", {
+				email: "alice@example.com",
+				username: "alice",
+			});
+		});
+
+		await t.run(async (ctx) => {
+			await expect(
+				insert(ctx, "users", {
+					email: " ALICE@EXAMPLE.COM ",
+					username: "alice-2",
+				}),
+			).rejects.toThrow(/already exists/);
+		});
+	});
+
+	it("runs custom extensions before uniqueRow config", async () => {
+		const t = convexTest(schema, modules);
+
+		const normalizeSlug = createExtension((input) => {
+			const data = input.data as Record<string, any>;
+			return {
+				...data,
+				slug: String(data.slug).toLowerCase().trim(),
+			};
+		});
+
+		const { insert } = verifyConfig(schema, {
+			extensions: [normalizeSlug],
+			uniqueRow: uniqueRowConfig(schema, {
+				posts: ["by_author_slug"],
+			}),
+		});
+
+		await t.run(async (ctx) => {
+			await insert(ctx, "posts", {
+				title: "First",
+				slug: "hello-world",
+				authorId: "author1",
+			});
+		});
+
+		await t.run(async (ctx) => {
+			await expect(
+				insert(ctx, "posts", {
+					title: "Duplicate",
+					slug: " Hello-World ",
 					authorId: "author1",
-				});
-			});
-
-			await t.run(async (ctx) => {
-				const doc = await ctx.db.get(postId) as any;
-				expect(doc?.slug).toBe("post-hello");
-			});
-		});
-	});
-
-	describe("mixed validation and transformation", () => {
-		it("can validate and transform in the same plugin", async () => {
-			const t = convexTest(schema, modules);
-
-			// Config captured in closure; plugin verify functions receive ValidateContext (not plugin config)
-			const minLength = 3;
-			const normalizeAndValidate = createMutatePlugin(
-				"normalizeAndValidate",
-				{},
-				{
-					insert: (_context, data) => {
-						const normalized = (data.username as string).toLowerCase().trim();
-						if (normalized.length < minLength) {
-							throw new Error("Username too short");
-						}
-						return { ...data, username: normalized };
-					},
-				}
-			);
-
-			const { insert } = verifyConfig(schema, {
-				plugins: [normalizeAndValidate],
-			});
-
-			// Valid username – should be normalized and inserted
-			let userId: any;
-			await t.run(async (ctx) => {
-				userId = await insert(ctx, "users", {
-					email: "alice@example.com",
-					username: "  Alice  ",
-				});
-			});
-
-			await t.run(async (ctx) => {
-				const doc = await ctx.db.get(userId) as any;
-				expect(doc?.username).toBe("alice");
-			});
-
-			// Invalid username – should throw
-			await t.run(async (ctx) => {
-				await expect(
-					insert(ctx, "users", {
-						email: "b@example.com",
-						username: "b",
-					})
-				).rejects.toThrow("Username too short");
-			});
-		});
-	});
-
-	describe("async transform plugins", () => {
-		it("supports async transform plugins", async () => {
-			const t = convexTest(schema, modules);
-
-			const asyncTransform = createMutatePlugin("asyncTransform", {}, {
-				insert: async (_context, data) => {
-					// Simulate an async operation
-					await Promise.resolve();
-					return {
-						...data,
-						email: (data.email as string).toLowerCase(),
-					};
-				},
-			});
-
-			const { insert } = verifyConfig(schema, {
-				plugins: [asyncTransform],
-			});
-
-			let userId: any;
-			await t.run(async (ctx) => {
-				userId = await insert(ctx, "users", {
-					email: "ASYNC@EXAMPLE.COM",
-					username: "asyncuser",
-				});
-			});
-
-			await t.run(async (ctx) => {
-				const doc = await ctx.db.get(userId) as any;
-				expect(doc?.email).toBe("async@example.com");
-			});
-		});
-	});
-
-	describe("built-in uniqueness plugins validate transformed data", () => {
-		it("runs custom plugins before uniqueColumn config", async () => {
-			const t = convexTest(schema, modules);
-
-			const normalizeEmail = createMutatePlugin("normalizeEmail", {}, {
-				insert: (_context, data) => ({
-					...data,
-					email: (data.email as string).toLowerCase().trim(),
 				}),
-			});
-
-			const { insert } = verifyConfig(schema, {
-				plugins: [normalizeEmail],
-				uniqueColumn: uniqueColumnConfig(schema, {
-					users: ["by_email"],
-				}),
-			});
-
-			await t.run(async (ctx) => {
-				await insert(ctx, "users", {
-					email: "alice@example.com",
-					username: "alice",
-				});
-			});
-
-			await t.run(async (ctx) => {
-				await expect(
-					insert(ctx, "users", {
-						email: " ALICE@EXAMPLE.COM ",
-						username: "alice-2",
-					})
-				).rejects.toThrow(/already exists/);
-			});
-		});
-
-		it("runs custom plugins before uniqueRow config", async () => {
-			const t = convexTest(schema, modules);
-
-			const normalizeSlug = createMutatePlugin("normalizeSlug", {}, {
-				insert: (_context, data) => ({
-					...data,
-					slug: (data.slug as string).toLowerCase().trim(),
-				}),
-			});
-
-			const { insert } = verifyConfig(schema, {
-				plugins: [normalizeSlug],
-				uniqueRow: uniqueRowConfig(schema, {
-					posts: ["by_author_slug"],
-				}),
-			});
-
-			await t.run(async (ctx) => {
-				await insert(ctx, "posts", {
-					title: "First",
-					slug: "hello-world",
-					authorId: "author1",
-				});
-			});
-
-			await t.run(async (ctx) => {
-				await expect(
-					insert(ctx, "posts", {
-						title: "Duplicate",
-						slug: " Hello-World ",
-						authorId: "author1",
-					})
-				).rejects.toThrow(/existing row|already exists/);
-			});
+			).rejects.toThrow(/existing row|already exists/);
 		});
 	});
 });

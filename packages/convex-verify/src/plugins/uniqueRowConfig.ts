@@ -7,19 +7,19 @@ import {
 } from 'convex/server';
 import { ConvexError } from 'convex/values';
 
-import { createValidatePlugin, ValidateContext, ValidatePlugin } from '../core/plugin';
+import { ExtensionContext, SchemaExtension } from '../core/plugin';
 import { UniqueRowConfigData, UniqueRowConfigOptions } from '../core/types';
 import { constructColumnData, constructIndexData } from '../utils/helpers';
 
 /**
- * Creates a validate plugin that enforces row uniqueness based on database indexes.
+ * Creates an extension that enforces row uniqueness based on database indexes.
  *
- * This plugin checks that the combination of column values defined in your indexes
+ * This extension checks that the combination of column values defined in your indexes
  * doesn't already exist in the database before allowing insert/patch operations.
  *
  * @param schema - Your Convex schema definition
  * @param config - Object mapping table names to arrays of index configs
- * @returns A ValidatePlugin for use with verifyConfig
+ * @returns An extension for use with verifyConfig
  *
  * @example
  * ```ts
@@ -38,7 +38,7 @@ import { constructColumnData, constructIndexData } from '../utils/helpers';
  *
  * // Use with verifyConfig
  * const { insert, patch } = verifyConfig(schema, {
- *   plugins: [uniqueRow],
+ *   extensions: [uniqueRow],
  * });
  * ```
  */
@@ -49,7 +49,7 @@ export const uniqueRowConfig = <
 >(
 	schema: S,
 	config: C
-): ValidatePlugin<'uniqueRow', C> => {
+): SchemaExtension<S, 'uniqueRow', C> => {
 	const uniqueRowError = (message: string): never => {
 		throw new ConvexError({
 			message,
@@ -60,11 +60,14 @@ export const uniqueRowConfig = <
 	/**
 	 * Core verification logic shared between insert and patch
 	 */
-	const verifyUniqueness = async <TN extends TableNamesInDataModel<DataModel>>(
-		context: ValidateContext<string>,
-		data: Record<string, any>,
+	const verifyUniqueness = async <
+		TN extends TableNamesInDataModel<DataModel>,
+		D extends Record<string, any>,
+	>(
+		context: ExtensionContext<TN>,
+		data: D,
 		tableName: TN
-	): Promise<Record<string, any>> => {
+	): Promise<D> => {
 		const { ctx, operation, patchId, onFail } = context;
 
 		const indexesData = constructIndexData(schema, tableName, config);
@@ -159,12 +162,12 @@ export const uniqueRowConfig = <
 
 					if (_existing) {
 						for (const identifier of identifiers) {
-							if (
-								(_existing[identifier as keyof D] &&
-									_data[identifier as keyof D] &&
-									_existing[identifier as keyof D] === _data[identifier as keyof D]) ||
-								(identifier === '_id' && _existing[identifier as keyof D] === patchId)
-							) {
+								if (
+									((_existing[identifier as keyof D] !== undefined &&
+										_data[identifier as keyof D] !== undefined &&
+										_existing[identifier as keyof D] === _data[identifier as keyof D]) ||
+										(identifier === '_id' && _existing[identifier as keyof D] === patchId))
+								) {
 								idMatchedToExisting = String(identifier);
 								break;
 							}
@@ -232,12 +235,17 @@ export const uniqueRowConfig = <
 		return data;
 	};
 
-	return createValidatePlugin('uniqueRow', config, {
-		insert: async (context, data) => {
-			return verifyUniqueness(context, data, context.tableName as TableNamesInDataModel<DataModel>);
+	const extension = {
+		_type: 'uniqueRow',
+		config,
+		async verify(input) {
+			return (await verifyUniqueness(
+				input as unknown as ExtensionContext<TableNamesInDataModel<DataModel>>,
+				input.data as Record<string, any>,
+				input.tableName as TableNamesInDataModel<DataModel>
+			)) as typeof input.data;
 		},
-		patch: async (context, data) => {
-			return verifyUniqueness(context, data, context.tableName as TableNamesInDataModel<DataModel>);
-		},
-	});
+	} as SchemaExtension<S, 'uniqueRow', C>;
+
+	return extension;
 };

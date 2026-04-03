@@ -1,7 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { verifyConfig } from "../core/verifyConfig";
-import { createMutatePlugin } from "../core/plugin";
+import { createExtension } from "../core/plugin";
 import { protectedColumnsConfig } from "./protectedColumnsConfig";
 import schema from "../__tests__/schema";
 import { modules } from "../__tests__/modules";
@@ -122,18 +122,23 @@ describe("protectedColumnsConfig", () => {
 			it("strips protected columns reintroduced by plugins during patch", async () => {
 				const t = convexTest(schema, modules);
 
-				const reassignAuthor = createMutatePlugin("reassignAuthor", {}, {
-					patch: (_context, data) => ({
+				const reassignAuthor = createExtension((input) => {
+					if (input.operation === "insert") {
+						return input.data;
+					}
+
+					const data = input.data as Record<string, any>;
+					return {
 						...data,
 						authorId: "plugin-author",
-					}),
+					};
 				});
 
 				const { insert, patch } = verifyConfig(schema, {
 					protectedColumns: protectedColumnsConfig(schema, {
 						posts: ["authorId"],
 					}),
-					plugins: [reassignAuthor],
+					extensions: [reassignAuthor],
 				});
 
 				let postId: any;
