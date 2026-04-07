@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/natedunn/convex-verify/compare/v1.2.0...v1.2.1) (2026-04-07)
+
+
+### Bug Fixes
+
+* **ci:** pass NPM token to release step ([61f0fbd](https://github.com/natedunn/convex-verify/commit/61f0fbde6317971eee52787a96a61c09671a51b6))
+
 # [1.2.0](https://github.com/natedunn/convex-verify/compare/v1.1.0...v1.2.0) (2026-04-07)
 
 
