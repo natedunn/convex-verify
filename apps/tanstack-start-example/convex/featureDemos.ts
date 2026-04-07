@@ -41,7 +41,6 @@ export const createUniqueEmailUser = mutation({
 		label: v.string(),
 	},
 	handler: async (ctx, args) => {
-		await verify.uniqueColumn(ctx, "uniqueEmailUsers", args);
 		const id = await insert(ctx, "uniqueEmailUsers", args);
 		return ctx.db.get(id);
 	},
