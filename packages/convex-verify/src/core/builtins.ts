@@ -175,7 +175,7 @@ export const buildUniqueRowVerifier = <
 		for (const indexInfo of indexesData) {
 			const { name, fields, identifiers } = indexInfo;
 
-			if (!fields[0] && !fields[1]) {
+			if (fields.length < 2) {
 				uniqueRowError(
 					`Error in 'verifyRowUniqueness()'. There must be two columns to test against. If you are attempting to enforce a unique column, use the 'uniqueColumn' config option.`,
 				);
