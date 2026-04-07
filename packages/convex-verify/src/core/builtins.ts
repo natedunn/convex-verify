@@ -39,6 +39,7 @@ export const stripProtectedPatchColumns = <T extends Record<string, any>>(
 		};
 	}
 
+	const protectedKeySet = new Set(protectedKeys.map(String));
 	const removedColumns = protectedKeys.filter((key) => key in data).map(String);
 	if (removedColumns.length === 0) {
 		return {
@@ -48,7 +49,7 @@ export const stripProtectedPatchColumns = <T extends Record<string, any>>(
 	}
 
 	const filteredData = Object.fromEntries(
-			Object.entries(data).filter(([key]) => !protectedKeys.map(String).includes(key)),
+			Object.entries(data).filter(([key]) => !protectedKeySet.has(key)),
 	) as T;
 
 	return {
