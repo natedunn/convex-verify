@@ -1,6 +1,6 @@
 {
 	"name": "convex-verify",
-	"version": "1.1.0",
+	"version": "2.0.0",
 	"description": "Type-safe verification and validation for Convex database operations",
 	"packageManager": "pnpm@9.10.0",
 	"main": "./dist/index.js",
@@ -16,21 +16,6 @@
 			"types": "./dist/core/index.d.ts",
 			"import": "./dist/core/index.mjs",
 			"require": "./dist/core/index.js"
-		},
-		"./transforms": {
-			"types": "./dist/transforms/index.d.ts",
-			"import": "./dist/transforms/index.mjs",
-			"require": "./dist/transforms/index.js"
-		},
-		"./configs": {
-			"types": "./dist/configs/index.d.ts",
-			"import": "./dist/configs/index.mjs",
-			"require": "./dist/configs/index.js"
-		},
-		"./plugins": {
-			"types": "./dist/plugins/index.d.ts",
-			"import": "./dist/plugins/index.mjs",
-			"require": "./dist/plugins/index.js"
 		},
 		"./utils": {
 			"types": "./dist/utils/index.d.ts",

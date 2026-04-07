@@ -1,8 +1,17 @@
 // Main verifyConfig function
 export { verifyConfig } from './verifyConfig';
+export { stripProtectedPatchColumns } from './builtins';
 
 // Extension system
-export { createExtension, isExtension, runExtensions } from './plugin';
+import {
+	createExtension as createExtensionImpl,
+	isExtension as isExtensionImpl,
+	runExtensions as runExtensionsImpl,
+} from './plugin';
+
+export const createExtension = createExtensionImpl;
+export const isExtension = isExtensionImpl;
+export const runExtensions = runExtensionsImpl;
 export type {
 	ExtensionContext,
 	ExtensionInput,
@@ -24,7 +33,11 @@ export type {
 	OnFailCallback,
 	// Config data types
 	DMGeneric,
+	DataModelForSchema,
+	MutationCtxForSchema,
 	DefaultValuesConfigData,
+	DefaultValuesConfigInput,
+	ProtectedColumnsConfigData,
 	// Index-based config types
 	IndexConfigBaseOptions,
 	IndexConfigEntry,
@@ -37,9 +50,6 @@ export type {
 	UniqueColumnConfigOptions,
 	UniqueColumnConfigEntry,
 	UniqueColumnConfigData,
-	// Input types
-	DefaultValuesInput,
-	ProtectedColumnsInput,
 	// VerifyConfig types
 	VerifyConfigInput,
 	// Type extraction helpers
@@ -48,6 +58,14 @@ export type {
 	HasKey,
 	ExtractProtectedColumnsConfig,
 	ProtectedKeysForTable,
+	VerifyInsertInput,
+	VerifyPatchInput,
+	DefaultValuesVerifyFn,
+	ProtectedColumnsVerifyFn,
+	ExtensionStyleVerifyFn,
+	BuiltinConfigKey,
+	VerifyRegistry,
+	ConfigRegistry,
 } from './types';
 
 // Utility function

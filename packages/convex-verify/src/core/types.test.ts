@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeIndexConfigEntry } from "./types";
+import { normalizeIndexConfigEntry, UniqueRowConfigOptions } from "./types";
 
 describe("normalizeIndexConfigEntry", () => {
 	it("normalizes string shorthand to object with default identifiers", () => {
@@ -38,7 +38,7 @@ describe("normalizeIndexConfigEntry", () => {
 	});
 
 	it("preserves additional options from object config", () => {
-		const result = normalizeIndexConfigEntry({
+		const result = normalizeIndexConfigEntry<UniqueRowConfigOptions>({
 			index: "by_author_slug",
 			identifiers: ["_id"],
 			queryExistingWithNullish: true,

@@ -3,7 +3,15 @@
 // =============================================================================
 
 export { verifyConfig } from './core';
-export { createExtension, isExtension, runExtensions } from './core';
+import {
+	createExtension as createExtensionImpl,
+	isExtension as isExtensionImpl,
+	runExtensions as runExtensionsImpl,
+} from './core';
+
+export const createExtension = createExtensionImpl;
+export const isExtension = isExtensionImpl;
+export const runExtensions = runExtensionsImpl;
 export type {
 	ExtensionContext,
 	ExtensionInput,
@@ -16,9 +24,16 @@ export type {
 	// Utility types
 	Prettify,
 	MakeOptional,
+	// Data model helpers
+	DataModelForSchema,
+	MutationCtxForSchema,
 	// OnFail types
 	OnFailArgs,
 	OnFailCallback,
+	// Config data types
+	DefaultValuesConfigData,
+	DefaultValuesConfigInput,
+	ProtectedColumnsConfigData,
 	// VerifyConfig types
 	VerifyConfigInput,
 	// Type extraction helpers
@@ -27,27 +42,16 @@ export type {
 	HasKey,
 	ExtractProtectedColumnsConfig,
 	ProtectedKeysForTable,
+	// Direct verify types
+	VerifyInsertInput,
+	VerifyPatchInput,
+	DefaultValuesVerifyFn,
+	ProtectedColumnsVerifyFn,
+	ExtensionStyleVerifyFn,
+	BuiltinConfigKey,
+	VerifyRegistry,
+	ConfigRegistry,
 } from './core';
-
-// =============================================================================
-// Transforms
-// =============================================================================
-
-export { defaultValuesConfig } from './transforms';
-export type { DefaultValuesConfigData } from './transforms';
-
-// =============================================================================
-// Configs
-// =============================================================================
-
-export { protectedColumnsConfig } from './configs';
-export type { ProtectedColumnsConfigData } from './configs';
-
-// =============================================================================
-// Built-in Extensions
-// =============================================================================
-
-export { uniqueRowConfig, uniqueColumnConfig } from './plugins';
 export type {
 	UniqueRowConfigData,
 	UniqueRowConfigEntry,
@@ -55,7 +59,7 @@ export type {
 	UniqueColumnConfigData,
 	UniqueColumnConfigEntry,
 	UniqueColumnConfigOptions,
-} from './plugins';
+} from './core';
 
 // =============================================================================
 // Utils

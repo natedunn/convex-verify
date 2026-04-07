@@ -19,8 +19,8 @@ No relative imports, no secondary repo checkout.
 ## What it tests
 
 - `createExtension` lowercases and trims email addresses
-- `uniqueColumnConfig` prevents duplicates after normalization
-- `defaultValuesConfig` fills `status` and `createdAt`
+- `uniqueColumn` prevents duplicates after normalization
+- inline `defaultValues` fills `status` and `createdAt`
 
 The `convex-verify` setup for the example lives in `convex/verify.ts`, so the
 mutation file stays focused on the app-facing handlers.

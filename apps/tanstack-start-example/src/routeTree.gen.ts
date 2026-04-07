@@ -9,8 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UniqueRowRouteImport } from './routes/unique-row'
+import { Route as UniqueColumnRouteImport } from './routes/unique-column'
+import { Route as ProtectedColumnsRouteImport } from './routes/protected-columns'
+import { Route as DefaultValuesRouteImport } from './routes/default-values'
 import { Route as IndexRouteImport } from './routes/index'
 
+const UniqueRowRoute = UniqueRowRouteImport.update({
+  id: '/unique-row',
+  path: '/unique-row',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UniqueColumnRoute = UniqueColumnRouteImport.update({
+  id: '/unique-column',
+  path: '/unique-column',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProtectedColumnsRoute = ProtectedColumnsRouteImport.update({
+  id: '/protected-columns',
+  path: '/protected-columns',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DefaultValuesRoute = DefaultValuesRouteImport.update({
+  id: '/default-values',
+  path: '/default-values',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +43,88 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/default-values': typeof DefaultValuesRoute
+  '/protected-columns': typeof ProtectedColumnsRoute
+  '/unique-column': typeof UniqueColumnRoute
+  '/unique-row': typeof UniqueRowRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/default-values': typeof DefaultValuesRoute
+  '/protected-columns': typeof ProtectedColumnsRoute
+  '/unique-column': typeof UniqueColumnRoute
+  '/unique-row': typeof UniqueRowRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/default-values': typeof DefaultValuesRoute
+  '/protected-columns': typeof ProtectedColumnsRoute
+  '/unique-column': typeof UniqueColumnRoute
+  '/unique-row': typeof UniqueRowRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/default-values'
+    | '/protected-columns'
+    | '/unique-column'
+    | '/unique-row'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/default-values'
+    | '/protected-columns'
+    | '/unique-column'
+    | '/unique-row'
+  id:
+    | '__root__'
+    | '/'
+    | '/default-values'
+    | '/protected-columns'
+    | '/unique-column'
+    | '/unique-row'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DefaultValuesRoute: typeof DefaultValuesRoute
+  ProtectedColumnsRoute: typeof ProtectedColumnsRoute
+  UniqueColumnRoute: typeof UniqueColumnRoute
+  UniqueRowRoute: typeof UniqueRowRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/unique-row': {
+      id: '/unique-row'
+      path: '/unique-row'
+      fullPath: '/unique-row'
+      preLoaderRoute: typeof UniqueRowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unique-column': {
+      id: '/unique-column'
+      path: '/unique-column'
+      fullPath: '/unique-column'
+      preLoaderRoute: typeof UniqueColumnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/protected-columns': {
+      id: '/protected-columns'
+      path: '/protected-columns'
+      fullPath: '/protected-columns'
+      preLoaderRoute: typeof ProtectedColumnsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/default-values': {
+      id: '/default-values'
+      path: '/default-values'
+      fullPath: '/default-values'
+      preLoaderRoute: typeof DefaultValuesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +137,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DefaultValuesRoute: DefaultValuesRoute,
+  ProtectedColumnsRoute: ProtectedColumnsRoute,
+  UniqueColumnRoute: UniqueColumnRoute,
+  UniqueRowRoute: UniqueRowRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

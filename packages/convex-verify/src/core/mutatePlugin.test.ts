@@ -3,8 +3,6 @@ import { describe, expect, it } from "vitest";
 
 import schema from "../__tests__/schema";
 import { modules } from "../__tests__/modules";
-import { uniqueColumnConfig } from "../plugins/uniqueColumnConfig";
-import { uniqueRowConfig } from "../plugins/uniqueRowConfig";
 import { createExtension } from "./plugin";
 import { verifyConfig } from "./verifyConfig";
 
@@ -200,9 +198,9 @@ describe("extensions can transform data", () => {
 
 		const { insert } = verifyConfig(schema, {
 			extensions: [normalizeEmail],
-			uniqueColumn: uniqueColumnConfig(schema, {
+			uniqueColumn: {
 				users: ["by_email"],
-			}),
+			},
 		});
 
 		await t.run(async (ctx) => {
@@ -235,9 +233,9 @@ describe("extensions can transform data", () => {
 
 		const { insert } = verifyConfig(schema, {
 			extensions: [normalizeSlug],
-			uniqueRow: uniqueRowConfig(schema, {
+			uniqueRow: {
 				posts: ["by_author_slug"],
-			}),
+			},
 		});
 
 		await t.run(async (ctx) => {

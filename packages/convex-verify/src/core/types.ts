@@ -1,11 +1,16 @@
 import {
 	DataModelFromSchemaDefinition,
+	DocumentByName,
 	GenericDocument,
+	GenericMutationCtx,
+	GenericSchema,
 	Indexes,
 	NamedTableInfo,
 	SchemaDefinition,
+	TableNamesInDataModel,
 	WithoutSystemFields,
 } from 'convex/server';
+import { GenericId } from 'convex/values';
 
 // =============================================================================
 // Utility Types
@@ -17,17 +22,41 @@ export type MakeOptional<T, K extends PropertyKey> = Prettify<
 	Omit<T, K & keyof T> & Partial<Pick<T, K & keyof T>>
 >;
 
+export type MaybePromise<T> = T | Promise<T>;
+
+export type Exact<T, Shape> = T extends Shape
+	? T extends (...args: any[]) => any
+		? T
+		: T extends readonly any[]
+			? T
+			: T extends object
+				? {
+						[K in keyof T]: K extends keyof NonNullable<Shape>
+							? Exact<T[K], NonNullable<Shape>[K]>
+							: never;
+				  } & {
+						[K in Exclude<keyof NonNullable<Shape>, keyof T>]?: NonNullable<Shape>[K];
+				  }
+				: T
+	: never;
+
 // =============================================================================
-// Base Types for Config Functions
+// Base Types
 // =============================================================================
 
-/**
- * Base interface that all config functions should return.
- * Each config type can have its own `verify` signature and additional properties.
- */
 export type BaseConfigReturn = {
 	config: Record<string, any>;
 };
+
+export type DMGeneric = DataModelFromSchemaDefinition<SchemaDefinition<any, boolean>>;
+
+export type DataModelForSchema<S extends SchemaDefinition<GenericSchema, boolean>> =
+	DataModelFromSchemaDefinition<S>;
+
+export type MutationCtxForSchema<S extends SchemaDefinition<GenericSchema, boolean>> = Omit<
+	GenericMutationCtx<DataModelForSchema<S>>,
+	never
+>;
 
 // =============================================================================
 // OnFail Types
@@ -53,10 +82,8 @@ export type OnFailArgs<D extends GenericDocument> = {
 export type OnFailCallback<D extends GenericDocument> = (args: OnFailArgs<D>) => void;
 
 // =============================================================================
-// Config Data Types (what the user provides)
+// Config Data Types
 // =============================================================================
-
-export type DMGeneric = DataModelFromSchemaDefinition<SchemaDefinition<any, boolean>>;
 
 export type DefaultValuesConfigData<DM extends DMGeneric> = {
 	[K in keyof DM]?: {
@@ -64,34 +91,22 @@ export type DefaultValuesConfigData<DM extends DMGeneric> = {
 	};
 };
 
+export type DefaultValuesConfigInput<DM extends DMGeneric> =
+	| DefaultValuesConfigData<DM>
+	| (() => DefaultValuesConfigData<DM> | Promise<DefaultValuesConfigData<DM>>);
+
+export type ProtectedColumnsConfigData<DM extends DMGeneric> = {
+	[K in keyof DM]?: (keyof WithoutSystemFields<DM[K]['document']>)[];
+};
+
 // =============================================================================
-// Index-Based Config Types (shared between uniqueRow, uniqueColumn, etc.)
+// Index-Based Config Types
 // =============================================================================
 
-/**
- * Base options shared by all index-based config entries.
- * Individual extensions can extend this with their own options.
- */
 export type IndexConfigBaseOptions = {
-	/** Additional identifiers to check if the existing row is the same document being updated */
 	identifiers?: string[];
 };
 
-/**
- * A config entry that can be either:
- * - A string (index name) for shorthand
- * - An object with `index` and additional options
- *
- * @example
- * ```ts
- * // These are equivalent:
- * 'by_username'
- * { index: 'by_username' }
- *
- * // With options:
- * { index: 'by_username', identifiers: ['_id', 'userId'] }
- * ```
- */
 export type IndexConfigEntry<
 	DM extends DMGeneric,
 	K extends keyof DM,
@@ -103,19 +118,12 @@ export type IndexConfigEntry<
 			identifiers?: (keyof NamedTableInfo<DM, K>['document'])[];
 	  } & Omit<Options, 'identifiers'>);
 
-/**
- * Normalized form of an index config entry (always an object)
- */
 export type NormalizedIndexConfig<Options extends IndexConfigBaseOptions = IndexConfigBaseOptions> =
 	{
 		index: string;
 		identifiers: string[];
 	} & Omit<Options, 'identifiers'>;
 
-/**
- * Normalize a config entry to always have index and identifiers.
- * Works for both string shorthand and full object configs.
- */
 export function normalizeIndexConfigEntry<
 	Options extends IndexConfigBaseOptions = IndexConfigBaseOptions,
 >(
@@ -172,94 +180,282 @@ export type UniqueColumnConfigData<DM extends DMGeneric> = {
 };
 
 // =============================================================================
-// Input Types (loose types for verifyConfig to accept)
+// VerifyConfig Types
 // =============================================================================
 
-/**
- * Loose input types that accept any return from config functions.
- * We use loose types here to avoid complex generic matching,
- * then extract the specific config types using conditional types.
- */
-export type DefaultValuesInput = {
-	_type: 'defaultValues';
-	verify: (tableName: any, data: any) => Promise<any>;
-	config:
-		| Record<string, Record<string, any>>
-		| (() => Record<string, Record<string, any>> | Promise<Record<string, Record<string, any>>>);
+export type VerifyConfigInput<S extends SchemaDefinition<GenericSchema, boolean>> = {
+	defaultValues?: DefaultValuesConfigInput<DataModelForSchema<S>>;
+	protectedColumns?: ProtectedColumnsConfigData<DataModelForSchema<S>>;
+	uniqueRow?: UniqueRowConfigData<DataModelForSchema<S>>;
+	uniqueColumn?: UniqueColumnConfigData<DataModelForSchema<S>>;
 };
 
-/**
- * Loose input type for protectedColumnsConfig return value.
- */
-export type ProtectedColumnsInput = {
-	_type: 'protectedColumns';
-	config: Record<string, string[]>;
+export type DefaultValuesParameter<
+	S extends SchemaDefinition<GenericSchema, boolean>,
+	DV,
+> =
+	ValidateDefaultValuesInput<S, DV>;
+
+export type VerifyConfigSections<
+	S extends SchemaDefinition<GenericSchema, boolean>,
+	DV = never,
+	PC = never,
+	UR = never,
+	UC = never,
+	E = never,
+> = {
+	defaultValues?: DefaultValuesParameter<S, DV>;
+	protectedColumns?: Exact<PC, ProtectedColumnsConfigData<DataModelForSchema<S>>>;
+	uniqueRow?: Exact<UR, UniqueRowConfigData<DataModelForSchema<S>>>;
+	uniqueColumn?: Exact<UC, UniqueColumnConfigData<DataModelForSchema<S>>>;
+	extensions?: E;
 };
 
-// =============================================================================
-// Object-Based Types (for verifyConfig)
-// =============================================================================
+export type VerifyConfigShapeFromGenerics<
+	S extends SchemaDefinition<GenericSchema, boolean>,
+	DV,
+	PC,
+	UR,
+	UC,
+	E,
+> = Prettify<
+	([DV] extends [never] ? {} : { defaultValues: DefaultValuesParameter<S, DV> }) &
+		([PC] extends [never]
+			? {}
+			: { protectedColumns: Exact<PC, ProtectedColumnsConfigData<DataModelForSchema<S>>> }) &
+		([UR] extends [never]
+			? {}
+			: { uniqueRow: Exact<UR, UniqueRowConfigData<DataModelForSchema<S>>> }) &
+		([UC] extends [never]
+			? {}
+			: { uniqueColumn: Exact<UC, UniqueColumnConfigData<DataModelForSchema<S>>> }) &
+		([E] extends [never] ? {} : { extensions: E })
+>;
 
-/**
- * Config input for verifyConfig.
- *
- * - `defaultValues`: Transform config that makes fields optional (affects types)
- * - `protectedColumns`: Columns that cannot be patched (affects patch() types)
- * Extension-specific options are added by `verifyConfig`.
- */
-export type VerifyConfigInput = {
-	defaultValues?: DefaultValuesInput;
-	protectedColumns?: ProtectedColumnsInput;
-};
+type AllowedVerifyConfigKeys =
+	| 'defaultValues'
+	| 'protectedColumns'
+	| 'uniqueRow'
+	| 'uniqueColumn'
+	| 'extensions';
+
+export type ValidateDefaultValuesInput<
+	S extends SchemaDefinition<GenericSchema, boolean>,
+	V,
+> = V extends () => Promise<infer R>
+	? () => Promise<Exact<R, DefaultValuesConfigData<DataModelForSchema<S>>>>
+	: V extends () => infer R
+		? () => Exact<R, DefaultValuesConfigData<DataModelForSchema<S>>>
+		: Exact<V, DefaultValuesConfigData<DataModelForSchema<S>>>;
+
+export type ValidateVerifyConfig<
+	S extends SchemaDefinition<GenericSchema, boolean>,
+	VC,
+> = VC extends object
+	? {
+			[K in keyof VC]: K extends 'defaultValues'
+				? ValidateDefaultValuesInput<S, VC[K]>
+				: K extends 'protectedColumns'
+					? Exact<VC[K], ProtectedColumnsConfigData<DataModelForSchema<S>>>
+					: K extends 'uniqueRow'
+						? Exact<VC[K], UniqueRowConfigData<DataModelForSchema<S>>>
+						: K extends 'uniqueColumn'
+							? Exact<VC[K], UniqueColumnConfigData<DataModelForSchema<S>>>
+							: K extends 'extensions'
+								? VC[K]
+								: never;
+	  } & {
+			[K in Exclude<keyof VC, AllowedVerifyConfigKeys>]: never;
+	  }
+	: never;
 
 // =============================================================================
 // Type Extraction Helpers
 // =============================================================================
 
-/**
- * Extract the config type from defaultValues.config.
- * Handles both direct object and function forms.
- */
+export type HasKey<T, K extends PropertyKey> = K extends keyof T ? true : false;
+
 export type ExtractDefaultValuesConfig<VC> = VC extends {
-	defaultValues: { config: infer C };
+	defaultValues: infer C;
 }
 	? C extends () => infer R
 		? Awaited<R>
 		: C
 	: Record<string, never>;
 
-/**
- * Compute which keys should be optional for a given table based on all configs.
- * Currently only defaultValues affects optionality.
- */
 export type OptionalKeysForTable<VC, TN> = TN extends keyof ExtractDefaultValuesConfig<VC>
 	? keyof ExtractDefaultValuesConfig<VC>[TN]
 	: never;
 
-/**
- * Helper to check if a key exists in a type
- */
-export type HasKey<T, K extends PropertyKey> = K extends keyof T ? true : false;
-
-// =============================================================================
-// Protected Columns Type Extraction
-// =============================================================================
-
-/**
- * Extract the config type from protectedColumns.config
- */
 export type ExtractProtectedColumnsConfig<VC> = VC extends {
-	protectedColumns: { config: infer C };
+	protectedColumns: infer C;
 }
 	? C
 	: Record<string, never>;
 
-/**
- * Get protected column keys for a specific table.
- * Returns the column names that should be omitted from patch() input.
- */
 export type ProtectedKeysForTable<VC, TN> = TN extends keyof ExtractProtectedColumnsConfig<VC>
 	? ExtractProtectedColumnsConfig<VC>[TN] extends readonly (infer K)[]
 		? K
 		: never
 	: never;
+
+// =============================================================================
+// Direct Verify Input Types
+// =============================================================================
+
+export type VerifyInsertInput<
+	S extends SchemaDefinition<GenericSchema, boolean>,
+	TN extends TableNamesInDataModel<DataModelForSchema<S>>,
+	TData,
+> = {
+	ctx: MutationCtxForSchema<S>;
+	tableName: TN;
+	operation: 'insert';
+	onFail?: OnFailCallback<DocumentByName<DataModelForSchema<S>, TN>>;
+	schema: S;
+	patchId?: undefined;
+	data: TData;
+};
+
+export type VerifyPatchInput<
+	S extends SchemaDefinition<GenericSchema, boolean>,
+	TN extends TableNamesInDataModel<DataModelForSchema<S>>,
+	TData,
+> = {
+	ctx: MutationCtxForSchema<S>;
+	tableName: TN;
+	operation: 'patch';
+	patchId: GenericId<TN>;
+	onFail?: OnFailCallback<DocumentByName<DataModelForSchema<S>, TN>>;
+	schema: S;
+	data: TData;
+};
+
+export type ExtensionStyleVerifyFn<S extends SchemaDefinition<GenericSchema, boolean>> = {
+	<TN extends TableNamesInDataModel<DataModelForSchema<S>>>(
+		input: VerifyInsertInput<
+			S,
+			TN,
+			WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>
+		>,
+	): Promise<WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>>;
+	<TN extends TableNamesInDataModel<DataModelForSchema<S>>>(
+		input: VerifyPatchInput<
+			S,
+			TN,
+			Partial<WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>>
+		>,
+	): Promise<Partial<WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>>>;
+};
+
+export type DefaultValuesVerifyFn<
+	S extends SchemaDefinition<GenericSchema, boolean>,
+	VC,
+> = {
+	<TN extends TableNamesInDataModel<DataModelForSchema<S>>>(
+		tableName: TN,
+		data: HasKey<VC, 'defaultValues'> extends true
+			? MakeOptional<
+					WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>,
+					OptionalKeysForTable<VC, TN> &
+						keyof WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>
+				>
+			: WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>,
+	): Promise<WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>>;
+	<TN extends TableNamesInDataModel<DataModelForSchema<S>>>(
+		input: VerifyInsertInput<
+			S,
+			TN,
+			HasKey<VC, 'defaultValues'> extends true
+				? MakeOptional<
+						WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>,
+						OptionalKeysForTable<VC, TN> &
+							keyof WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>
+				  >
+				: WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>
+		>,
+	): Promise<WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>>;
+	<TN extends TableNamesInDataModel<DataModelForSchema<S>>>(
+		input: VerifyPatchInput<
+			S,
+			TN,
+			Partial<WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>>
+		>,
+	): Promise<Partial<WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>>>;
+};
+
+export type ProtectedColumnsVerifyFn<S extends SchemaDefinition<GenericSchema, boolean>> = {
+	<TN extends TableNamesInDataModel<DataModelForSchema<S>>>(
+		tableName: TN,
+		data: Partial<WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>>,
+	): Promise<Partial<WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>>>;
+	<TN extends TableNamesInDataModel<DataModelForSchema<S>>>(
+		input: VerifyInsertInput<
+			S,
+			TN,
+			WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>
+		>,
+	): Promise<WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>>;
+	<TN extends TableNamesInDataModel<DataModelForSchema<S>>>(
+		input: VerifyPatchInput<
+			S,
+			TN,
+			Partial<WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>>
+		>,
+	): Promise<Partial<WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>>>;
+};
+
+export type UniqueVerifyFn<S extends SchemaDefinition<GenericSchema, boolean>> = {
+	<TN extends TableNamesInDataModel<DataModelForSchema<S>>, D extends Partial<
+		WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>
+	>>(
+		ctx: MutationCtxForSchema<S>,
+		tableName: TN,
+		data: D,
+	): Promise<D>;
+	<TN extends TableNamesInDataModel<DataModelForSchema<S>>, D extends Partial<
+		WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>
+	>>(
+		ctx: MutationCtxForSchema<S>,
+		tableName: TN,
+		patchId: GenericId<TN>,
+		data: D,
+	): Promise<D>;
+	<TN extends TableNamesInDataModel<DataModelForSchema<S>>, D extends Partial<
+		WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>
+	>>(
+		input: VerifyInsertInput<S, TN, D>,
+	): Promise<D>;
+	<TN extends TableNamesInDataModel<DataModelForSchema<S>>, D extends Partial<
+		WithoutSystemFields<DocumentByName<DataModelForSchema<S>, TN>>
+	>>(
+		input: VerifyPatchInput<S, TN, D>,
+	): Promise<D>;
+};
+
+export type BuiltinConfigKey =
+	| 'defaultValues'
+	| 'protectedColumns'
+	| 'uniqueRow'
+	| 'uniqueColumn';
+
+export type VerifyFnForKey<
+	S extends SchemaDefinition<GenericSchema, boolean>,
+	VC,
+	K extends BuiltinConfigKey,
+> = K extends 'defaultValues'
+	? DefaultValuesVerifyFn<S, VC>
+	: K extends 'protectedColumns'
+		? ProtectedColumnsVerifyFn<S>
+		: UniqueVerifyFn<S>;
+
+export type VerifyRegistry<
+	S extends SchemaDefinition<GenericSchema, boolean>,
+	VC,
+> = Prettify<{
+	[K in BuiltinConfigKey as HasKey<VC, K> extends true ? K : never]: VerifyFnForKey<S, VC, K>;
+}>;
+
+export type ConfigRegistry<VC> = Prettify<{
+	[K in BuiltinConfigKey as HasKey<VC, K> extends true ? K : never]: K extends keyof VC ? VC[K] : never;
+}>;

@@ -32,13 +32,17 @@ function RootComponent() {
         <div className="page-shell">
           <header className="hero">
             <p className="eyebrow">TANSTACK START EXAMPLE</p>
-            <h1>convex-verify package check</h1>
+            <h1>convex-verify feature lab</h1>
             <p className="lede">
-              Smallest possible app in this repo that exercises
-              <code>convex-verify</code> as a package dependency.
+              Dedicated routes for each built-in so you can manually verify runtime behavior while
+              iterating on the package.
             </p>
             <nav className="nav">
-              <Link to="/">Users demo</Link>
+              <Link to="/">Overview</Link>
+              <Link to="/default-values">defaultValues</Link>
+              <Link to="/unique-column">uniqueColumn</Link>
+              <Link to="/unique-row">uniqueRow</Link>
+              <Link to="/protected-columns">protectedColumns</Link>
             </nav>
           </header>
 
@@ -69,7 +73,7 @@ function NotFoundComponent() {
   return (
     <section className="card">
       <h2>Page not found</h2>
-      <p className="muted">There is only one route in this example app.</p>
+      <p className="muted">Choose one of the built-in demo routes from the header.</p>
       <Link to="/">Go back</Link>
     </section>
   );

@@ -56,7 +56,10 @@ export const constructColumnData = <
 			const column = fields?.[index];
 			const value = data?.[column];
 
-			if (!column || (!allowNullishValue && !value)) {
+			if (
+				!column ||
+				(!allowNullishValue && (value === undefined || value === null))
+			) {
 				return;
 			}
 

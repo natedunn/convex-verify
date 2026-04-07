@@ -1,19 +1,40 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { verifyConfig } from "../core/verifyConfig";
-import { defaultValuesConfig } from "./defaultValuesConfig";
 import schema from "../__tests__/schema";
 import { modules } from "../__tests__/modules";
 
 describe("defaultValuesConfig", () => {
 	describe("static config", () => {
+		it("supports direct verify.defaultValues(tableName, data) calls", async () => {
+			const { verify } = verifyConfig(schema, {
+				defaultValues: {
+					posts: { status: "draft", views: 0 },
+				},
+			});
+
+			const post = await verify.defaultValues("posts", {
+				title: "My Post",
+				slug: "my-post",
+				authorId: "author123",
+			});
+
+			expect(post).toEqual({
+				title: "My Post",
+				slug: "my-post",
+				authorId: "author123",
+				status: "draft",
+				views: 0,
+			});
+		});
+
 		it("applies default values on insert", async () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				defaultValues: defaultValuesConfig(schema, {
+				defaultValues: {
 					posts: { status: "draft", views: 0 },
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -34,9 +55,9 @@ describe("defaultValuesConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				defaultValues: defaultValuesConfig(schema, {
+				defaultValues: {
 					posts: { status: "draft", views: 0 },
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -58,9 +79,9 @@ describe("defaultValuesConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				defaultValues: defaultValuesConfig(schema, {
+				defaultValues: {
 					posts: { status: "draft" },
-				}),
+				},
 			});
 
 			// Users table has no defaults config
@@ -80,9 +101,9 @@ describe("defaultValuesConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				defaultValues: defaultValuesConfig(schema, {
+				defaultValues: {
 					posts: { status: "draft" }, // Only status, not views
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -106,12 +127,12 @@ describe("defaultValuesConfig", () => {
 
 			let callCount = 0;
 			const { insert } = verifyConfig(schema, {
-				defaultValues: defaultValuesConfig(schema, () => {
+				defaultValues: () => {
 					callCount++;
 					return {
 						posts: { status: "draft", views: callCount * 10 },
 					};
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -140,13 +161,13 @@ describe("defaultValuesConfig", () => {
 
 			const timestamps: number[] = [];
 			const { insert } = verifyConfig(schema, {
-				defaultValues: defaultValuesConfig(schema, () => {
+				defaultValues: () => {
 					const now = Date.now();
 					timestamps.push(now);
 					return {
 						posts: { views: now },
 					};
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -169,6 +190,7 @@ describe("defaultValuesConfig", () => {
 			// Timestamps should be different (dynamic generation)
 			expect(timestamps.length).toBe(2);
 		});
+
 	});
 
 	describe("async config", () => {
@@ -176,13 +198,13 @@ describe("defaultValuesConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				defaultValues: defaultValuesConfig(schema, async () => {
+				defaultValues: async () => {
 					// Simulate async operation
 					await new Promise((resolve) => setTimeout(resolve, 1));
 					return {
 						posts: { status: "pending-review", views: 0 },
 					};
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -203,11 +225,11 @@ describe("defaultValuesConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				defaultValues: defaultValuesConfig(schema, {
+				defaultValues: {
 					posts: { status: "draft", views: 0 },
 					users: { status: "active" },
 					comments: { likes: 0 },
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -234,6 +256,46 @@ describe("defaultValuesConfig", () => {
 				});
 				const comment = await ctx.db.get(commentId);
 				expect(comment?.likes).toBe(0);
+			});
+		});
+	});
+
+	describe("returned verify and config", () => {
+		it("exposes verify.defaultValues and keeps config as raw data", async () => {
+			const t = convexTest(schema, modules);
+
+			const defaults = () => ({
+				posts: { status: "draft", views: 0 },
+			});
+
+			const { insert, verify, config } = verifyConfig(schema, {
+				defaultValues: defaults,
+			});
+
+			expect(config.defaultValues).toBe(defaults);
+
+			let postId: any;
+			await t.run(async (ctx) => {
+				postId = await insert(ctx, "posts", {
+					title: "Seed",
+					slug: "seed",
+					authorId: "author123",
+				});
+
+				const patched = await verify.defaultValues({
+					ctx,
+					tableName: "posts",
+					operation: "patch",
+					patchId: postId,
+					schema,
+					data: {
+						title: "Patched",
+					},
+				});
+
+				expect(patched).toEqual({
+					title: "Patched",
+				});
 			});
 		});
 	});
