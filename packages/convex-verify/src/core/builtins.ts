@@ -39,8 +39,9 @@ export const stripProtectedPatchColumns = <T extends Record<string, any>>(
 		};
 	}
 
-	const protectedKeySet = new Set(protectedKeys.map(String));
-	const removedColumns = protectedKeys.filter((key) => key in data).map(String);
+	const protectedKeyStrings = protectedKeys.map(String);
+	const protectedKeySet = new Set(protectedKeyStrings);
+	const removedColumns = protectedKeyStrings.filter((key) => key in data);
 	if (removedColumns.length === 0) {
 		return {
 			filteredData: data,
