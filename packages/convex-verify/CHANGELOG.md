@@ -1,3 +1,22 @@
+# [1.2.0](https://github.com/natedunn/convex-verify/compare/v1.1.0...v1.2.0) (2026-04-07)
+
+
+### Bug Fixes
+
+* **ci:** remove broken npm upgrade step ([77bc7c3](https://github.com/natedunn/convex-verify/commit/77bc7c3ca6b68a724d86813add4d88c29ce3a358))
+* correct uniqueRow field-count guard to use fields.length < 2 ([45ee055](https://github.com/natedunn/convex-verify/commit/45ee0554b9d1d9eb76ebcadf7393e54ed15c2c84))
+
+
+### Features
+
+* rewrite verifyConfig inline API ([6b456ef](https://github.com/natedunn/convex-verify/commit/6b456ef6169fd0076b249d6c956549f84426fe85))
+
+
+### Performance Improvements
+
+* avoid duplicate map(String) in stripProtectedPatchColumns ([38b53da](https://github.com/natedunn/convex-verify/commit/38b53da5a723eb5976325a2061e710cce6f7ec2d))
+* precompute Set for stripProtectedPatchColumns filter ([2576156](https://github.com/natedunn/convex-verify/commit/257615699d307e650d69b9d6daf1b59061873560))
+
 # [1.1.0](https://github.com/natedunn/convex-verify/compare/v1.0.5...v1.1.0) (2026-04-03)
 
 
