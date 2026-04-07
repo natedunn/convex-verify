@@ -13,7 +13,9 @@ Drop in and composable utilities for validating, transforming, and protecting wr
 ## Installation
 
 ```bash
-[pnpm|npm|bun] install convex-verify
+pnpm add convex-verify
+npm install convex-verify
+bun add convex-verify
 ```
 
 **Peer Dependencies:**
