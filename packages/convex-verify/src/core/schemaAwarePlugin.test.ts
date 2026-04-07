@@ -115,6 +115,44 @@ describe("schema-aware extensions", () => {
 			});
 		});
 	});
+
+	it("supports schema-aware typing from createExtension(schema, fn)", async () => {
+		const t = convexTest(schema, modules);
+
+		const normalizeEmail = createExtension(schema, (input) => {
+			if (input.tableName !== "users") {
+				return input.data;
+			}
+
+			if (input.operation === "insert") {
+				return {
+					...input.data,
+					email: input.data.email.toLowerCase().trim(),
+				};
+			}
+
+			return {
+				...input.data,
+				...(input.data.email !== undefined && {
+					email: input.data.email.toLowerCase().trim(),
+				}),
+			};
+		});
+
+		const { insert } = verifyConfig(schema, {
+			extensions: [normalizeEmail],
+		});
+
+		await t.run(async (ctx) => {
+			const userId = await insert(ctx, "users", {
+				email: " ALICE@EXAMPLE.COM ",
+				username: "alice",
+			});
+
+			const user = await ctx.db.get(userId);
+			expect(user?.email).toBe("alice@example.com");
+		});
+	});
 });
 
 function assertSchemaAwareExtensionTypes(
@@ -170,31 +208,30 @@ function assertSchemaAwareExtensionTypes(
 		},
 	});
 
-	// @ts-expect-error wrong users field type
 	void normalizeEmail.verify({
 		ctx,
 		tableName: "users",
 		operation: "insert",
 		schema,
 		data: {
+			// @ts-expect-error wrong users field type
 			email: 123,
 			username: "alice",
 		},
 	});
 
-	// @ts-expect-error wrong table fields
 	void normalizeEmail.verify({
 		ctx,
 		tableName: "posts",
 		operation: "insert",
 		schema,
 		data: {
+			// @ts-expect-error wrong table fields
 			email: "alice@example.com",
 			username: "alice",
 		},
 	});
 
-	// @ts-expect-error wrong patch field
 	void normalizeEmail.verify({
 		ctx,
 		tableName: "users",
@@ -202,6 +239,7 @@ function assertSchemaAwareExtensionTypes(
 		patchId: userId,
 		schema,
 		data: {
+			// @ts-expect-error wrong patch field
 			slug: "nope",
 		},
 	});

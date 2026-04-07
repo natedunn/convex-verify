@@ -24,36 +24,30 @@ pnpm install convex-verify
 ## Quick Start
 
 ```ts
-import {
-	defaultValuesConfig,
-	protectedColumnsConfig,
-	uniqueColumnConfig,
-	uniqueRowConfig,
-	verifyConfig,
-} from "convex-verify";
+import { verifyConfig } from "convex-verify";
 
 import schema from "./schema";
 
-export const { insert, patch, dangerouslyPatch } = verifyConfig(schema, {
-	defaultValues: defaultValuesConfig(schema, {
+export const { insert, patch, dangerouslyPatch, verify, config } = verifyConfig(schema, {
+	defaultValues: {
 		posts: { status: "draft", views: 0 },
-	}),
+	},
 
-	protectedColumns: protectedColumnsConfig(schema, {
+	protectedColumns: {
 		posts: ["authorId"],
-	}),
+	},
 
-	uniqueRow: uniqueRowConfig(schema, {
+	uniqueRow: {
 		posts: ["by_author_slug"],
-	}),
+	},
 
-	uniqueColumn: uniqueColumnConfig(schema, {
+	uniqueColumn: {
 		users: ["by_email", "by_username"],
-	}),
+	},
 });
 ```
 
-Then use in your mutations:
+Use the returned helpers in mutations:
 
 ```ts
 import { insert, patch } from "./verify";
@@ -82,48 +76,68 @@ export const updatePost = mutation({
 });
 ```
 
+And use the returned verifier surface directly when you need schema-aware built-in checks outside the insert/patch helpers:
+
+```ts
+await verify.uniqueRow(ctx, "posts", {
+	title: "Hello",
+	slug: "hello",
+	authorId: "author-1",
+});
+
+config.uniqueRow.posts; // typed configured options
+```
+
 ---
 
 ## API Reference
 
 ### `verifyConfig(schema, config)`
 
-Main configuration function that returns typed `insert`, `patch`, and `dangerouslyPatch` functions.
+Main configuration function. It accepts inline schema-aware config and returns typed mutation helpers plus a direct `verify` registry.
 
 ```ts
-const { insert, patch, dangerouslyPatch } = verifyConfig(schema, {
-  defaultValues?: DefaultValuesConfig,
-  protectedColumns?: ProtectedColumnsConfig,
-  uniqueRow?: UniqueRowConfig,
-  uniqueColumn?: UniqueColumnConfig,
+const { insert, patch, dangerouslyPatch, verify, config } = verifyConfig(schema, {
+  defaultValues?: {
+    posts?: { status?: "draft"; views?: number };
+  } | (() => { ... } | Promise<{ ... }>),
+  protectedColumns?: {
+    posts?: ["authorId"];
+  },
+  uniqueRow?: {
+    posts?: ["by_author_slug"];
+  },
+  uniqueColumn?: {
+    users?: ["by_email", "by_username"];
+  },
   extensions?: Extension[],
 });
 ```
 
 #### Returns
 
-| Function           | Description                                                                         |
+| Function/Value     | Description                                                                         |
 | ------------------ | ----------------------------------------------------------------------------------- |
 | `insert`           | Insert with default values applied and extensions run                               |
 | `patch`            | Patch with protected columns removed and extensions run                             |
 | `dangerouslyPatch` | Patch with full access to all columns (bypasses protected columns type restriction) |
+| `verify`           | Built-in verifier functions for configured features only                            |
+| `config`           | Passive typed snapshot of the built-in config that was passed in                    |
 
 ---
 
-## `defaultValuesConfig`
+## `defaultValues`
 
-Makes specified fields optional in `insert()` by providing default values. The types update automatically - fields with defaults become optional.
-
-```ts
-import { defaultValuesConfig } from "convex-verify";
-```
+Makes specified fields optional in `insert()` by providing default values. The types update automatically.
 
 ### Static Values
 
 ```ts
-const config = defaultValuesConfig(schema, {
+const { insert } = verifyConfig(schema, {
+	defaultValues: {
 	posts: { status: "draft", views: 0 },
 	comments: { likes: 0 },
+	},
 });
 ```
 
@@ -132,41 +146,58 @@ const config = defaultValuesConfig(schema, {
 Use a function when values should be generated fresh on each insert:
 
 ```ts
-const config = defaultValuesConfig(schema, () => ({
-	posts: {
-		status: "draft",
-		slug: generateRandomSlug(),
-		createdAt: Date.now(),
-	},
-}));
+const { insert } = verifyConfig(schema, {
+	defaultValues: () => ({
+		posts: {
+			status: "draft",
+			slug: generateRandomSlug(),
+			createdAt: Date.now(),
+		},
+	}),
+});
 ```
 
 ### Async Values
 
 ```ts
-const config = defaultValuesConfig(schema, async () => ({
-	posts: {
-		category: await fetchDefaultCategory(),
+const { insert } = verifyConfig(schema, {
+	defaultValues: async () => ({
+		posts: {
+			category: await fetchDefaultCategory(),
+		},
+	}),
+});
+```
+
+### Direct Verifier Calls
+
+```ts
+const { verify } = verifyConfig(schema, {
+	defaultValues: {
+		users: { status: "pending" },
 	},
-}));
+});
+
+const user = await verify.defaultValues("users", {
+	email: "alice@example.com",
+	username: "alice",
+});
 ```
 
 ---
 
-## `protectedColumnsConfig`
+## `protectedColumns`
 
 Removes specified columns from the `patch()` input type, preventing accidental updates to critical fields like `authorId` or `createdAt`.
-
-```ts
-import { protectedColumnsConfig } from "convex-verify";
-```
 
 ### Usage
 
 ```ts
-const config = protectedColumnsConfig(schema, {
-	posts: ["authorId", "createdAt"],
-	comments: ["postId", "authorId"],
+const { patch, dangerouslyPatch } = verifyConfig(schema, {
+	protectedColumns: {
+		posts: ["authorId", "createdAt"],
+		comments: ["postId", "authorId"],
+	},
 });
 ```
 
@@ -192,33 +223,33 @@ await dangerouslyPatch(ctx, "posts", id, {
 
 ---
 
-## `uniqueRowConfig`
+## `uniqueRow`
 
 Enforces uniqueness across multiple columns using composite indexes. Useful for things like "unique slug per author" or "unique name per organization".
-
-```ts
-import { uniqueRowConfig } from "convex-verify";
-```
 
 ### Usage
 
 ```ts
-const config = uniqueRowConfig(schema, {
-	posts: ["by_author_slug"], // Unique author + slug combination
-	projects: ["by_org_name"], // Unique org + name combination
+const { verify } = verifyConfig(schema, {
+	uniqueRow: {
+		posts: ["by_author_slug"], // Unique author + slug combination
+		projects: ["by_org_name"], // Unique org + name combination
+	},
 });
 ```
 
 ### With Options
 
 ```ts
-const config = uniqueRowConfig(schema, {
-	posts: [
-		{
-			index: "by_author_slug",
-			identifiers: ["_id", "authorId"], // Fields that identify "same document"
-		},
-	],
+const { verify } = verifyConfig(schema, {
+	uniqueRow: {
+		posts: [
+			{
+				index: "by_author_slug",
+				identifiers: ["_id", "authorId"], // Fields that identify "same document"
+			},
+		],
+	},
 });
 ```
 
@@ -226,20 +257,18 @@ The `identifiers` option controls which fields are checked when determining if a
 
 ---
 
-## `uniqueColumnConfig`
+## `uniqueColumn`
 
 Enforces uniqueness on single columns using indexes. Useful for email addresses, usernames, slugs, etc.
-
-```ts
-import { uniqueColumnConfig } from "convex-verify";
-```
 
 ### Usage
 
 ```ts
-const config = uniqueColumnConfig(schema, {
-	users: ["by_email", "by_username"],
-	organizations: ["by_slug"],
+const { verify } = verifyConfig(schema, {
+	uniqueColumn: {
+		users: ["by_email", "by_username"],
+		organizations: ["by_slug"],
+	},
 });
 ```
 
@@ -251,13 +280,42 @@ The column name is derived from the index name by removing the `by_` prefix:
 ### With Options
 
 ```ts
-const config = uniqueColumnConfig(schema, {
-	users: [
-		"by_username",
-		{ index: "by_email", identifiers: ["_id", "clerkId"] },
-	],
+const { verify } = verifyConfig(schema, {
+	uniqueColumn: {
+		users: [
+			"by_username",
+			{ index: "by_email", identifiers: ["_id", "clerkId"] },
+		],
+	},
 });
 ```
+
+### Direct Verifier Calls
+
+```ts
+await verify.uniqueColumn(ctx, "users", {
+	email: "alice@example.com",
+});
+```
+
+Patch checks use the document id:
+
+```ts
+await verify.uniqueColumn(ctx, "users", userId, {
+	username: "alice",
+});
+```
+
+Direct uniqueness verifier calls may use partial data. Only configured unique fields present in the payload are checked.
+
+### Breaking Change
+
+Version `2.0.0` removes the old helper-wrapper API:
+
+- `defaultValuesConfig`
+- `protectedColumnsConfig`
+- `uniqueRowConfig`
+- `uniqueColumnConfig`
 
 ---
 
@@ -283,15 +341,25 @@ Custom extensions let you add your own validation and transformation logic that 
 - `patch()` still strips protected columns at runtime; use `dangerouslyPatch()` if an extension must change them
 - Extension errors should use `ConvexError` for proper error handling on the client
 
+### Execution Order
+
+Custom extensions always run before built-in uniqueness checks.
+
+- `insert()`: `defaultValues` → custom `extensions` → `uniqueRow` → `uniqueColumn`
+- `patch()`: protected-column strip → custom `extensions` → `uniqueRow` → `uniqueColumn` → protected-column strip again
+- `dangerouslyPatch()`: custom `extensions` → `uniqueRow` → `uniqueColumn`
+
+`defaultValues` and protected-column stripping are preprocessing steps, not entries in the custom `extensions` array.
+
 ### Creating an Extension
 
-Use `createExtension`. If you want schema-aware typing in the callback, pass your schema type as the generic:
+Use `createExtension`. For schema-aware typing in the callback, pass the schema as the first argument:
 
 ```ts
 import { createExtension } from "convex-verify";
 import { ConvexError } from "convex/values";
 
-const normalizeEmail = createExtension<typeof schema>((input) => {
+const normalizeEmail = createExtension(schema, (input) => {
 	if (input.tableName !== "users") {
 		return input.data;
 	}

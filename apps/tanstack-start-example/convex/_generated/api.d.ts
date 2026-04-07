@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as featureDemos from "../featureDemos.js";
 import type * as users from "../users.js";
 import type * as verify from "../verify.js";
 
@@ -18,6 +19,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  featureDemos: typeof featureDemos;
   users: typeof users;
   verify: typeof verify;
 }>;

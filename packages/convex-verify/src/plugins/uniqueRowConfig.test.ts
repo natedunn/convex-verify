@@ -1,7 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
+import type { DataModelForSchema, UniqueRowConfigData } from "../core/types";
 import { verifyConfig } from "../core/verifyConfig";
-import { uniqueRowConfig } from "./uniqueRowConfig";
 import schema from "../__tests__/schema";
 import { modules } from "../__tests__/modules";
 
@@ -11,9 +11,9 @@ describe("uniqueRowConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				uniqueRow: uniqueRowConfig(schema, {
+				uniqueRow: {
 					posts: ["by_author_slug"],
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -30,9 +30,9 @@ describe("uniqueRowConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				uniqueRow: uniqueRowConfig(schema, {
+				uniqueRow: {
 					posts: ["by_author_slug"],
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -56,9 +56,9 @@ describe("uniqueRowConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				uniqueRow: uniqueRowConfig(schema, {
+				uniqueRow: {
 					posts: ["by_author_slug"],
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -81,13 +81,41 @@ describe("uniqueRowConfig", () => {
 			});
 		});
 
+		it("treats empty strings as real composite index values", async () => {
+			const t = convexTest(schema, modules);
+
+			const { insert } = verifyConfig(schema, {
+				uniqueRow: {
+					posts: ["by_author_slug"],
+				},
+			});
+
+			await t.run(async (ctx) => {
+				await insert(ctx, "posts", {
+					title: "Original Post",
+					slug: "",
+					authorId: "author123",
+				});
+			});
+
+			await t.run(async (ctx) => {
+				await expect(
+					insert(ctx, "posts", {
+						title: "Duplicate Empty Slug",
+						slug: "",
+						authorId: "author123",
+					})
+				).rejects.toThrowError(/existing row/);
+			});
+		});
+
 		it("allows different slugs for same author", async () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				uniqueRow: uniqueRowConfig(schema, {
+				uniqueRow: {
 					posts: ["by_author_slug"],
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -113,9 +141,9 @@ describe("uniqueRowConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert, patch } = verifyConfig(schema, {
-				uniqueRow: uniqueRowConfig(schema, {
+				uniqueRow: {
 					posts: ["by_author_slug"],
-				}),
+				},
 			});
 
 			let postId: any;
@@ -139,9 +167,9 @@ describe("uniqueRowConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert, patch } = verifyConfig(schema, {
-				uniqueRow: uniqueRowConfig(schema, {
+				uniqueRow: {
 					posts: ["by_author_slug"],
-				}),
+				},
 			});
 
 			let postId: any;
@@ -165,9 +193,9 @@ describe("uniqueRowConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert, patch } = verifyConfig(schema, {
-				uniqueRow: uniqueRowConfig(schema, {
+				uniqueRow: {
 					posts: ["by_author_slug"],
-				}),
+				},
 			});
 
 			let firstPostId: any;
@@ -196,9 +224,9 @@ describe("uniqueRowConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert, patch } = verifyConfig(schema, {
-				uniqueRow: uniqueRowConfig(schema, {
+				uniqueRow: {
 					posts: ["by_author_slug"],
-				}),
+				},
 			});
 
 			let postId: any;
@@ -224,9 +252,9 @@ describe("uniqueRowConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				uniqueRow: uniqueRowConfig(schema, {
+				uniqueRow: {
 					posts: ["by_author_slug"],
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -274,9 +302,9 @@ describe("uniqueRowConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				uniqueRow: uniqueRowConfig(schema, {
+				uniqueRow: {
 					posts: ["by_author_slug"],
-				}),
+				},
 			});
 
 			// Users table has no uniqueRow config
@@ -293,6 +321,47 @@ describe("uniqueRowConfig", () => {
 					username: "alice",
 				});
 				expect(id2).toBeDefined();
+			});
+		});
+	});
+
+	describe("returned verify and config", () => {
+		it("exposes verify.uniqueRow and raw config.uniqueRow", async () => {
+			const t = convexTest(schema, modules);
+
+			const uniqueRow: UniqueRowConfigData<DataModelForSchema<typeof schema>> = {
+				posts: ["by_author_slug"],
+			};
+
+			const { insert, verify, config } = verifyConfig(schema, {
+				uniqueRow,
+			});
+
+			expect(config.uniqueRow).toBe(uniqueRow);
+
+			let postId: any;
+			await t.run(async (ctx) => {
+				postId = await insert(ctx, "posts", {
+					title: "Original",
+					slug: "original",
+					authorId: "author123",
+				});
+
+				const inserted = await verify.uniqueRow(ctx, "posts", {
+					title: "Second",
+					slug: "second",
+					authorId: "author123",
+				});
+
+				expect(inserted.slug).toBe("second");
+
+				const patched = await verify.uniqueRow(ctx, "posts", postId, {
+					title: "Updated",
+				});
+
+				expect(patched).toEqual({
+					title: "Updated",
+				});
 			});
 		});
 	});

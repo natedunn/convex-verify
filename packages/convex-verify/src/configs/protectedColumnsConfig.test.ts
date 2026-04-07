@@ -1,8 +1,9 @@
 import { convexTest } from "convex-test";
+import { GenericId } from "convex/values";
 import { describe, it, expect } from "vitest";
+import type { DataModelForSchema, ProtectedColumnsConfigData } from "../core/types";
 import { verifyConfig } from "../core/verifyConfig";
 import { createExtension } from "../core/plugin";
-import { protectedColumnsConfig } from "./protectedColumnsConfig";
 import schema from "../__tests__/schema";
 import { modules } from "../__tests__/modules";
 
@@ -12,12 +13,12 @@ describe("protectedColumnsConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert, patch } = verifyConfig(schema, {
-				protectedColumns: protectedColumnsConfig(schema, {
+				protectedColumns: {
 					posts: ["authorId"],
-				}),
+				},
 			});
 
-			let postId: any;
+			let postId!: GenericId<"posts">;
 			await t.run(async (ctx) => {
 				postId = await insert(ctx, "posts", {
 					title: "Original Title",
@@ -45,12 +46,12 @@ describe("protectedColumnsConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert, patch } = verifyConfig(schema, {
-				protectedColumns: protectedColumnsConfig(schema, {
+				protectedColumns: {
 					posts: ["authorId", "slug"],
-				}),
+				},
 			});
 
-			let postId: any;
+			let postId!: GenericId<"posts">;
 			await t.run(async (ctx) => {
 				postId = await insert(ctx, "posts", {
 					title: "Original",
@@ -80,12 +81,12 @@ describe("protectedColumnsConfig", () => {
 				const t = convexTest(schema, modules);
 
 				const { insert, patch } = verifyConfig(schema, {
-					protectedColumns: protectedColumnsConfig(schema, {
+					protectedColumns: {
 						posts: ["authorId"],
-					}),
+					},
 				});
 
-				let postId: any;
+				let postId!: GenericId<"posts">;
 				let removedColumns: string[] = [];
 				await t.run(async (ctx) => {
 					postId = await insert(ctx, "posts", {
@@ -135,13 +136,13 @@ describe("protectedColumnsConfig", () => {
 				});
 
 				const { insert, patch } = verifyConfig(schema, {
-					protectedColumns: protectedColumnsConfig(schema, {
+					protectedColumns: {
 						posts: ["authorId"],
-					}),
+					},
 					extensions: [reassignAuthor],
 				});
 
-				let postId: any;
+				let postId!: GenericId<"posts">;
 				await t.run(async (ctx) => {
 					postId = await insert(ctx, "posts", {
 						title: "Original",
@@ -166,12 +167,12 @@ describe("protectedColumnsConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert, dangerouslyPatch } = verifyConfig(schema, {
-				protectedColumns: protectedColumnsConfig(schema, {
+				protectedColumns: {
 					posts: ["authorId"],
-				}),
+				},
 			});
 
-			let postId: any;
+			let postId!: GenericId<"posts">;
 			await t.run(async (ctx) => {
 				postId = await insert(ctx, "posts", {
 					title: "My Post",
@@ -195,12 +196,12 @@ describe("protectedColumnsConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert, dangerouslyPatch } = verifyConfig(schema, {
-				protectedColumns: protectedColumnsConfig(schema, {
+				protectedColumns: {
 					posts: ["authorId", "slug"],
-				}),
+				},
 			});
 
-			let postId: any;
+			let postId!: GenericId<"posts">;
 			await t.run(async (ctx) => {
 				postId = await insert(ctx, "posts", {
 					title: "My Post",
@@ -229,9 +230,9 @@ describe("protectedColumnsConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				protectedColumns: protectedColumnsConfig(schema, {
+				protectedColumns: {
 					posts: ["authorId"],
-				}),
+				},
 			});
 
 			// All columns including authorId can be set on insert
@@ -253,13 +254,13 @@ describe("protectedColumnsConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert, patch } = verifyConfig(schema, {
-				protectedColumns: protectedColumnsConfig(schema, {
+				protectedColumns: {
 					posts: ["authorId"],
-				}),
+				},
 			});
 
 			// Users table has no protected columns
-			let userId: any;
+			let userId!: GenericId<"users">;
 			await t.run(async (ctx) => {
 				userId = await insert(ctx, "users", {
 					email: "alice@example.com",
@@ -289,14 +290,14 @@ describe("protectedColumnsConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert, patch, dangerouslyPatch } = verifyConfig(schema, {
-				protectedColumns: protectedColumnsConfig(schema, {
+				protectedColumns: {
 					posts: ["authorId"],
 					comments: ["postId", "authorId"],
-				}),
+				},
 			});
 
-			let postId: any;
-			let commentId: any;
+			let postId!: GenericId<"posts">;
+			let commentId!: GenericId<"comments">;
 
 			await t.run(async (ctx) => {
 				postId = await insert(ctx, "posts", {
@@ -340,6 +341,33 @@ describe("protectedColumnsConfig", () => {
 				const comment = await ctx.db.get(commentId);
 				expect(comment?.postId).toBe("post456");
 				expect(comment?.authorId).toBe("commenter2");
+			});
+		});
+	});
+
+	describe("returned verify and config", () => {
+		it("exposes verify.protectedColumns and keeps config passive", async () => {
+			const t = convexTest(schema, modules);
+
+			const protectedColumns: ProtectedColumnsConfigData<DataModelForSchema<typeof schema>> = {
+				posts: ["authorId"],
+			};
+
+			const { verify, config } = verifyConfig(schema, {
+				protectedColumns,
+			});
+
+			expect(config.protectedColumns).toBe(protectedColumns);
+
+			await t.run(async (ctx) => {
+				const filtered = await verify.protectedColumns("posts", {
+					title: "Updated",
+					authorId: "author999",
+				});
+
+				expect(filtered).toEqual({
+					title: "Updated",
+				});
 			});
 		});
 	});

@@ -102,14 +102,24 @@ export type SchemaExtension<
 export function createExtension<const S extends SchemaDefinition<GenericSchema, boolean>>(
 	verify: ExtensionVerify<ExtensionInputForSchema<S>>,
 ): Extension<ExtensionInputForSchema<S>>;
+export function createExtension<const S extends SchemaDefinition<GenericSchema, boolean>>(
+	schema: S,
+	verify: ExtensionVerify<ExtensionInputForSchema<S>>,
+): Extension<ExtensionInputForSchema<S>>;
 export function createExtension(verify: ExtensionVerify): Extension;
 export function createExtension(
-	verify: (input: any) => MaybePromise<any>,
+	schemaOrVerify: SchemaDefinition<GenericSchema, boolean> | ((input: any) => MaybePromise<any>),
+	verify?: (input: any) => MaybePromise<any>,
 ): Extension {
+	const extensionVerify =
+		typeof verify === "function"
+			? verify
+			: (schemaOrVerify as (input: any) => MaybePromise<any>);
+
 	return {
 		_type: "extension",
 		verify(input) {
-			return verify(input);
+			return extensionVerify(input);
 		},
 	};
 }

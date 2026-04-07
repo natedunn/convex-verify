@@ -1,7 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
+import type { DataModelForSchema, UniqueColumnConfigData } from "../core/types";
 import { verifyConfig } from "../core/verifyConfig";
-import { uniqueColumnConfig } from "./uniqueColumnConfig";
 import schema from "../__tests__/schema";
 import { modules } from "../__tests__/modules";
 
@@ -11,9 +11,9 @@ describe("uniqueColumnConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				uniqueColumn: uniqueColumnConfig(schema, {
+				uniqueColumn: {
 					users: ["by_email"],
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -25,13 +25,38 @@ describe("uniqueColumnConfig", () => {
 			});
 		});
 
+		it("supports direct verifier calls with partial data", async () => {
+			const t = convexTest(schema, modules);
+
+			const { insert, verify } = verifyConfig(schema, {
+				uniqueColumn: {
+					users: ["by_email", "by_username"],
+				},
+			});
+
+			await t.run(async (ctx) => {
+				await insert(ctx, "users", {
+					email: "alice@example.com",
+					username: "alice",
+				});
+
+				const checked = await verify.uniqueColumn(ctx, "users", {
+					email: "bob@example.com",
+				});
+
+				expect(checked).toEqual({
+					email: "bob@example.com",
+				});
+			});
+		});
+
 		it("throws error when duplicate email exists on insert", async () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				uniqueColumn: uniqueColumnConfig(schema, {
+				uniqueColumn: {
 					users: ["by_email"],
-				}),
+				},
 			});
 
 			// Insert first user
@@ -57,9 +82,9 @@ describe("uniqueColumnConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				uniqueColumn: uniqueColumnConfig(schema, {
+				uniqueColumn: {
 					users: ["by_email"],
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -81,9 +106,9 @@ describe("uniqueColumnConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				uniqueColumn: uniqueColumnConfig(schema, {
+				uniqueColumn: {
 					users: ["by_email", "by_username"],
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -120,9 +145,9 @@ describe("uniqueColumnConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert, patch } = verifyConfig(schema, {
-				uniqueColumn: uniqueColumnConfig(schema, {
+				uniqueColumn: {
 					users: ["by_email"],
-				}),
+				},
 			});
 
 			let userId: any;
@@ -145,9 +170,9 @@ describe("uniqueColumnConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert, patch } = verifyConfig(schema, {
-				uniqueColumn: uniqueColumnConfig(schema, {
+				uniqueColumn: {
 					users: ["by_email"],
-				}),
+				},
 			});
 
 			let userId: any;
@@ -170,9 +195,9 @@ describe("uniqueColumnConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert, patch } = verifyConfig(schema, {
-				uniqueColumn: uniqueColumnConfig(schema, {
+				uniqueColumn: {
 					users: ["by_email"],
-				}),
+				},
 			});
 
 			let aliceId: any;
@@ -201,9 +226,9 @@ describe("uniqueColumnConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				uniqueColumn: uniqueColumnConfig(schema, {
+				uniqueColumn: {
 					users: ["by_email"],
-				}),
+				},
 			});
 
 			await t.run(async (ctx) => {
@@ -248,9 +273,9 @@ describe("uniqueColumnConfig", () => {
 			const t = convexTest(schema, modules);
 
 			const { insert } = verifyConfig(schema, {
-				uniqueColumn: uniqueColumnConfig(schema, {
+				uniqueColumn: {
 					users: ["by_email"],
-				}),
+				},
 			});
 
 			// Posts table has no uniqueColumn config, should work freely
@@ -269,6 +294,45 @@ describe("uniqueColumnConfig", () => {
 					authorId: "author123",
 				});
 				expect(id2).toBeDefined();
+			});
+		});
+	});
+
+	describe("returned verify and config", () => {
+		it("exposes verify.uniqueColumn and raw config.uniqueColumn", async () => {
+			const t = convexTest(schema, modules);
+
+			const uniqueColumn: UniqueColumnConfigData<DataModelForSchema<typeof schema>> = {
+				users: ["by_email"],
+			};
+
+			const { insert, verify, config } = verifyConfig(schema, {
+				uniqueColumn,
+			});
+
+			expect(config.uniqueColumn).toBe(uniqueColumn);
+
+			let userId: any;
+			await t.run(async (ctx) => {
+				userId = await insert(ctx, "users", {
+					email: "alice@example.com",
+					username: "alice",
+				});
+
+				const inserted = await verify.uniqueColumn(ctx, "users", {
+					email: "bob@example.com",
+					username: "bob",
+				});
+
+				expect(inserted.email).toBe("bob@example.com");
+
+				const patched = await verify.uniqueColumn(ctx, "users", userId, {
+					username: "alice",
+				});
+
+				expect(patched).toEqual({
+					username: "alice",
+				});
 			});
 		});
 	});
