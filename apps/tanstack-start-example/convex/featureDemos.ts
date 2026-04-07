@@ -60,7 +60,6 @@ export const createUniquePairEntry = mutation({
 		teamSlug: v.string(),
 	},
 	handler: async (ctx, args) => {
-		await verify.uniqueRow(ctx, "uniquePairEntries", args);
 		const id = await insert(ctx, "uniquePairEntries", args);
 		return ctx.db.get(id);
 	},
